@@ -1,0 +1,187 @@
+<!DOCTYPE html>
+<html lang="de">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no">
+<title>05 · Ergebniseingabe – Turnierverwaltung</title>
+<link rel="stylesheet" href="style.css">
+<style>
+  .abschnitt-title { font-family: var(--font-display); font-weight: 700; font-size: 18px; margin: 24px 0 10px; padding-top: 14px; border-top: 1px solid var(--line); }
+  .abschnitt-title:first-of-type { border-top: none; padding-top: 0; margin-top: 4px; }
+</style>
+</head>
+<body>
+<div class="wrap">
+  <div class="topbar">
+    <a class="back" href="index.html">&larr; Zurück zum Dashboard</a>
+    <span class="step">Schritt 05 von 06</span>
+  </div>
+  <p class="eyebrow">Turnierverwaltung</p>
+  <h1>Ergebniseingabe</h1>
+  <p class="lead">Stockpunkte je Spiel eintragen – Sieg/Unentschieden/Niederlage und Punkte werden automatisch berechnet (Sieg 2 · Unentschieden 1 · Niederlage 0).</p>
+
+  <div id="warnBox" class="warn-box" style="display:none;"></div>
+  <div id="ladeHinweis" class="hint-box">Lade Daten…</div>
+
+  <div class="actions">
+    <button id="btnSpeichern" onclick="alleSpeichern()">Alle Ergebnisse speichern</button>
+    <button id="btnWeiter" class="btn-secondary" onclick="speichernUndWeiter('06_tabelle.html')">Weiter zur Tabelle &rarr;</button>
+  </div>
+
+  <div id="tabelleContainer"></div>
+</div>
+
+<div class="toast" id="toast"></div>
+
+<script src="turnier.js"></script>
+<script>
+let spielplan = [];
+let teams = [];
+let ergebnisse = {};
+
+// Stockpunktdifferenz aus Sicht von Mannschaft A (positiv = A vorne)
+function diffText(erg) {
+    if (erg.stockA === '' || erg.stockA === undefined || erg.stockB === '' || erg.stockB === undefined) return '–';
+    const diff = Number(erg.stockA) - Number(erg.stockB);
+    return (diff > 0 ? '+' : '') + diff;
+}
+
+function punkteText(erg) {
+    if (erg.punkteA === undefined) return '–';
+    return `${erg.punkteA} : ${erg.punkteB}`;
+}
+
+function statusText(erg, spiel, teams) {
+    if (!erg.statusA) return tvBadgeHtml('offen');
+    if (erg.statusA === 'unentschieden') return tvBadgeHtml('unentschieden');
+    const siegerId = erg.statusA === 'sieg' ? spiel.teamA : spiel.teamB;
+    return `<span class="badge sieg">Sieg ${tvTeamName(teams, siegerId)}</span>`;
+}
+
+function renderAbschnitt(container, titel, spieleDesAbschnitts, zeigeRundeBahn = true) {
+    if (spieleDesAbschnitts.length === 0) return;
+
+    if (titel) {
+        const h = document.createElement('div');
+        h.className = 'abschnitt-title';
+        h.textContent = titel;
+        container.appendChild(h);
+    }
+
+    const table = document.createElement('table');
+    table.className = 'data';
+    const kopfSpalten = zeigeRundeBahn
+        ? '<th>Runde</th><th>Bahn</th>'
+        : '<th>Bahn</th><th>Begegnung</th>';
+    table.innerHTML = `<tr>${kopfSpalten}<th>Mannschaft A</th><th>Stockpunkte A</th>`
+        + `<th>Mannschaft B</th><th>Stockpunkte B</th><th>Differenz</th><th>Punkte A : B</th><th>Ergebnis</th></tr>`;
+
+    spieleDesAbschnitts
+        .slice()
+        .sort((a, b) => (a.runde || 0) - (b.runde || 0) || a.bahn - b.bahn)
+        .forEach(spiel => {
+            const erg = ergebnisse[spiel.id] || {};
+            const tr = document.createElement('tr');
+            const ersteSpalten = zeigeRundeBahn
+                ? `<td>${spiel.runde}</td><td>${spiel.bahn}</td>`
+                : `<td>${spiel.bahn}</td><td class="left">${spiel.bezeichnung || ''}</td>`;
+            tr.innerHTML = `
+                ${ersteSpalten}
+                <td class="left">${tvTeamName(teams, spiel.teamA)}</td>
+                <td><input type="number" min="0" data-spiel="${spiel.id}" data-seite="A" value="${erg.stockA ?? ''}"></td>
+                <td class="left">${tvTeamName(teams, spiel.teamB)}</td>
+                <td><input type="number" min="0" data-spiel="${spiel.id}" data-seite="B" value="${erg.stockB ?? ''}"></td>
+                <td class="erg-diff">${diffText(erg)}</td>
+                <td class="erg-punkte">${punkteText(erg)}</td>
+                <td class="erg-status">${statusText(erg, spiel, teams)}</td>
+            `;
+            table.appendChild(tr);
+        });
+    container.appendChild(table);
+}
+
+function renderAlle() {
+    const container = document.getElementById('tabelleContainer');
+    container.innerHTML = '';
+
+    const gruppenspiele = spielplan.filter(s => s.phase === 'gruppe' || !s.phase);
+    const gruppenmodus = gruppenspiele.some(s => s.gruppe === 1 || s.gruppe === 2);
+
+    if (gruppenmodus) {
+        renderAbschnitt(container, 'Gruppe 1', gruppenspiele.filter(s => s.gruppe === 1));
+        renderAbschnitt(container, 'Gruppe 2', gruppenspiele.filter(s => s.gruppe === 2));
+    } else {
+        renderAbschnitt(container, null, gruppenspiele);
+    }
+
+    renderAbschnitt(container, 'Kreuzspiele', spielplan.filter(s => s.phase === 'kreuzspiel'), false);
+    renderAbschnitt(container, 'Halbfinale', spielplan.filter(s => s.phase === 'halbfinale'), false);
+    renderAbschnitt(container, 'Finale', spielplan.filter(s => s.phase === 'finale'), false);
+
+    container.querySelectorAll('input[type="number"]').forEach(input => {
+        input.addEventListener('input', onInputChange);
+    });
+}
+
+function onInputChange(e) {
+    const spielId = e.target.dataset.spiel;
+    const seite = e.target.dataset.seite;
+    if (!ergebnisse[spielId]) ergebnisse[spielId] = {};
+    ergebnisse[spielId][seite === 'A' ? 'stockA' : 'stockB'] = e.target.value;
+
+    const erg = ergebnisse[spielId];
+    const result = tvBerechneErgebnis(erg.stockA, erg.stockB);
+    const row = e.target.closest('tr');
+    const spiel = spielplan.find(s => s.id === spielId);
+    if (result) {
+        Object.assign(erg, result);
+    } else {
+        delete erg.punkteA; delete erg.punkteB; delete erg.statusA; delete erg.statusB;
+    }
+    row.querySelector('.erg-diff').innerHTML = diffText(erg);
+    row.querySelector('.erg-punkte').innerHTML = punkteText(erg);
+    row.querySelector('.erg-status').innerHTML = statusText(erg, spiel, teams);
+}
+
+async function alleSpeichern() {
+    const btn = document.getElementById('btnSpeichern');
+    btn.disabled = true; btn.textContent = 'Speichere…';
+
+    Object.keys(ergebnisse).forEach(id => {
+        const e = ergebnisse[id];
+        if (e.stockA !== undefined) e.stockA = e.stockA === '' ? '' : Number(e.stockA);
+        if (e.stockB !== undefined) e.stockB = e.stockB === '' ? '' : Number(e.stockB);
+    });
+    const ergebnis = await tvSave({ ergebnisse });
+
+    btn.disabled = false; btn.textContent = 'Alle Ergebnisse speichern';
+    if (ergebnis !== null) tvToast('Ergebnisse gespeichert.', 'success');
+    return ergebnis !== null;
+}
+
+async function speichernUndWeiter(ziel) {
+    const btn = document.getElementById('btnWeiter');
+    btn.disabled = true; btn.textContent = 'Speichere…';
+    await alleSpeichern();
+    window.location.href = ziel;
+}
+
+document.addEventListener('DOMContentLoaded', async () => {
+    const t = await tvLoad();
+    document.getElementById('ladeHinweis').style.display = 'none';
+    spielplan = t.spielplan || [];
+    teams = (t.mannschaften || []).map(m => ({ id: m.id, name: m.name }));
+    ergebnisse = t.ergebnisse || {};
+
+    if (spielplan.length === 0) {
+        const box = document.getElementById('warnBox');
+        box.style.display = 'block';
+        box.innerHTML = 'Es ist noch kein Turnierplan vorhanden. Bitte zuerst unter '
+            + '<a href="03_turnierplan.html" style="color:var(--accent);">Turnierplan</a> einen Plan erstellen.';
+        return;
+    }
+    renderAlle();
+});
+</script>
+</body>
+</html>

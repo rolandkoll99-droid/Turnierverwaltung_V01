@@ -1,0 +1,85 @@
+<!DOCTYPE html>
+<html lang="de">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no">
+<title>07 · Anleitung – Turnierverwaltung</title>
+<link rel="stylesheet" href="style.css">
+<style>
+  .anleitung-abschnitt { margin-bottom: 28px; }
+  .anleitung-abschnitt h2 { font-family: var(--font-display); font-size: 19px; margin: 0 0 10px; color: var(--accent); }
+  .anleitung-abschnitt h3 { font-family: var(--font-display); font-size: 15px; margin: 18px 0 6px; }
+  .anleitung-abschnitt p, .anleitung-abschnitt li { color: var(--text-dim); font-size: 14px; line-height: 1.6; }
+  .anleitung-abschnitt ol, .anleitung-abschnitt ul { padding-left: 22px; margin: 6px 0; }
+  .anleitung-abschnitt strong { color: var(--text); }
+  .faq-frage { color: var(--text); font-weight: 600; margin-top: 14px; }
+</style>
+</head>
+<body>
+<div class="wrap">
+  <div class="topbar">
+    <a class="back" href="index.html">&larr; Zurück zum Dashboard</a>
+    <span class="step">Anleitung</span>
+  </div>
+  <p class="eyebrow">Turnierverwaltung</p>
+  <h1>Anleitung &amp; Hilfe</h1>
+  <p class="lead">So läuft ein Turnier von Anfang bis Ende durch. Jeder Schritt entspricht einer Kachel im Dashboard.</p>
+
+  <div class="anleitung-abschnitt">
+    <h2>Überblick</h2>
+    <p>Die Turnierverwaltung führt dich in sechs Schritten durch ein komplettes Stocksport-Turnier: vom Anlegen der Grunddaten über die Mannschaftserfassung, den automatischen Spielplan, die Wertungskarten und die Ergebniseingabe bis zur fertigen Tabelle. Alle Daten werden lokal in einer Datenbank auf diesem Gerät gespeichert – ohne Internet, ohne Cloud.</p>
+  </div>
+
+  <div class="anleitung-abschnitt">
+    <h2>01 – Turniername</h2>
+    <p>Grunddaten des Turniers: Turniername, Örtlichkeit, Datum, Beginn, Anzahl der Mannschaften und Anzahl der Bahnen. Diese Angaben erscheinen später auf Wertungskarten und im Tabellen-Export.</p>
+    <p><strong>Tipp:</strong> Auch unvollständige Angaben werden sofort gespeichert – du kannst jederzeit zurückkommen und ergänzen.</p>
+  </div>
+
+  <div class="anleitung-abschnitt">
+    <h2>02 – Mannschaften</h2>
+    <p>Mannschaftsnamen und Spieler eintragen. Alternativ per Excel-Vorlage importieren (Button „Leere Vorlage exportieren", ausfüllen, dann „Excel importieren").</p>
+  </div>
+
+  <div class="anleitung-abschnitt">
+    <h2>03 – Turnierplan</h2>
+    <p>Ein Klick auf „Spielplan erstellen" verlost automatisch, wer gegen wen auf welcher Bahn spielt (jeder gegen jeden). Bei ungerader Mannschaftsanzahl hat pro Runde eine Mannschaft spielfrei.</p>
+    <h3>Gruppenmodus (ab 10 Mannschaften)</h3>
+    <p>Bei mehr als 9 Mannschaften wird automatisch per Zufallslosung in Gruppe 1 und Gruppe 2 aufgeteilt, die Bahnen werden ebenfalls auf beide Gruppen verteilt. Nach der Gruppenphase folgen Kreuzspiele, Halbfinale und Finale (siehe Schritt 06).</p>
+  </div>
+
+  <div class="anleitung-abschnitt">
+    <h2>04 – Wertungskarten</h2>
+    <p><strong>Wertungskarte gesamt:</strong> eine Karte pro Mannschaft mit allen ihren Spielen – gut als Übersicht für die Mannschaft.</p>
+    <p><strong>Wertungskarte einzeln:</strong> eine Karte pro Spiel, wird nach dem Spiel beim Wertungsrichter abgegeben. Gespielt wird auf 6 Kehren.</p>
+  </div>
+
+  <div class="anleitung-abschnitt">
+    <h2>05 – Ergebniseingabe</h2>
+    <p>Stockpunkte je Spiel eintragen. Sieg (2 Punkte), Unentschieden (1 Punkt) und Niederlage (0 Punkte) sowie die Stockpunktdifferenz werden automatisch berechnet.</p>
+  </div>
+
+  <div class="anleitung-abschnitt">
+    <h2>06 – Tabelle</h2>
+    <p>Zeigt die aktuelle Platzierung, bei Punktegleichstand entscheidet die Stockpunktdifferenz. Im Gruppenmodus erscheinen nach vollständiger Gruppenphase automatisch die Buttons für Kreuzspiele, Halbfinale und Finale – am Ende steht die Gesamttabelle mit allen Mannschaften.</p>
+    <p><strong>Zuschauermonitor:</strong> öffnet die Tabelle in einem eigenen Fenster, das sich automatisch aktualisiert – ideal für einen zweiten Bildschirm.</p>
+    <p><strong>PDF-Export:</strong> erstellt eine druckfertige Ergebnisliste mit Mannschaften und Spielernamen.</p>
+  </div>
+
+  <div class="anleitung-abschnitt">
+    <h2>Neues Turnier / mehrere Turniere</h2>
+    <p>Über „🆕 Neues Turnier starten" (links oben) legst du ein neues, leeres Turnier an – das vorherige bleibt vollständig erhalten und ist jederzeit über „🗂 Frühere Turniere" wieder aufrufbar. So lassen sich z. B. mehrere Turniertage unabhängig voneinander verwalten.</p>
+  </div>
+
+  <div class="anleitung-abschnitt">
+    <h2>Häufige Fragen</h2>
+    <p class="faq-frage">Die Seite zeigt „Keine Verbindung zum lokalen Server" an?</p>
+    <p>Die Turnierverwaltung läuft nur, während das Programm im Hintergrund aktiv ist. Bitte <strong>Turnierverwaltung_starten.bat</strong> (Windows) bzw. <strong>Turnierverwaltung_starten.sh</strong> (Raspberry Pi/Linux/Mac) erneut ausführen – es geht dabei nichts verloren.</p>
+    <p class="faq-frage">Wo werden die Daten gespeichert?</p>
+    <p>In der Datei <strong>turnier.db</strong> im Programmordner. Für ein Backup reicht es, diese eine Datei zu kopieren.</p>
+    <p class="faq-frage">Kann ich das Turnier auf einem zweiten Gerät im selben Netzwerk anzeigen?</p>
+    <p>Ja – auf dem zweiten Gerät im Browser die IP-Adresse des Servers aufrufen, z. B. <strong>http://192.168.1.50:8000</strong>.</p>
+  </div>
+</div>
+</body>
+</html>

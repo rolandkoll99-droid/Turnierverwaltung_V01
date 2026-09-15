@@ -2,1561 +2,197 @@
 <html lang="de">
 <head>
 <meta charset="UTF-8">
-<meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover, maximum-scale=1.0, user-scalable=no">
-<title>Stockschützen Trainingssystem</title>
-
+<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no">
+<title>Turnierverwaltung</title>
+<link rel="stylesheet" href="style.css">
 <style>
-:root {
-    --green: #1f5e3a;
-    --red: #b93a32;
-    --gold: #ffdf8c;
-    --dark: #102417;
-    --light: #eef5e9;
-    --border: #d7e4cf;
-}
-
-* {
-    margin: 0;
-    padding: 0;
-    box-sizing: border-box;
-    -webkit-tap-highlight-color: transparent;
-}
-
-html, body {
-    height: 100%;
-    overflow: hidden;
-    touch-action: manipulation;
-}
-
-body {
-    font-family: 'Segoe UI', Arial, sans-serif;
-    background: linear-gradient(135deg, #17351f, #0d1f13);
-    color: #222;
-    display: flex;
-    flex-direction: column;
-    overflow: hidden;
-    height: 100vh;
-    height: -webkit-fill-available;
-}
-
-.header {
-    position: sticky;
-    top: 0;
-    z-index: 500;
-    background: var(--green);
-    color: white;
-    padding: 14px;
-    display: flex;
-    justify-content: space-between;
-    align-items: center;
-    flex-wrap: wrap;
-    gap: 12px;
-    flex-shrink: 0;
-}
-
-.header h1 {
-    font-size: 1.6rem;
-}
-
-.header-controls {
-    display: flex;
-    gap: 10px;
-    flex-wrap: wrap;
-    align-items: center;
-}
-
-button,
-select,
-input {
-    border: none;
-    border-radius: 12px;
-    padding: 10px 14px;
-    font-size: 1rem;
-    touch-action: manipulation;
-}
-
-button {
-    cursor: pointer;
-    background: var(--green);
-    color: white;
-    font-weight: 700;
-    touch-action: manipulation;
-    transition: transform 0.1s;
-    min-height: 44px;
-}
-
-button:active {
-    transform: scale(0.95);
-}
-
-.layout {
-    flex: 1;
-    padding: 16px;
-    overflow: hidden;
-    min-height: 0;
-}
-
-.arena {
-    width: 100%;
-    max-width: 1200px;
-    height: 100%;
-    background: white;
-    border-radius: 22px;
-    overflow: hidden;
-    box-shadow: 0 10px 30px rgba(0,0,0,.3);
-    display: flex;
-    flex-direction: column;
-    margin: 0 auto;
-}
-
-.arena-header {
-    background: var(--light);
-    padding: 12px 16px;
-    display: flex;
-    justify-content: space-between;
-    align-items: center;
-    flex-shrink: 0;
-    flex-wrap: wrap;
-    gap: 10px;
-}
-
-.arena-title {
-    font-size: 1.6rem;
-    font-weight: 900;
-    color: var(--green);
-    text-align: center;
-    flex: 1;
-}
-
-.team-name-edit {
-    display: flex;
-    gap: 15px;
-    align-items: center;
-    flex-wrap: wrap;
-}
-
-.team-name-edit input {
-    padding: 6px 12px;
-    border: 2px solid var(--border);
-    border-radius: 8px;
-    font-size: 0.9rem;
-    font-weight: 700;
-    width: 140px;
-    transition: border-color 0.3s;
-    background: white;
-    color: #222;
-    touch-action: manipulation;
-}
-
-.team-name-edit input:focus {
-    outline: none;
-    border-color: var(--green);
-}
-
-.team-name-edit .team-w-input {
-    color: var(--red);
-}
-
-.team-name-edit .team-e-input {
-    color: var(--green);
-}
-
-.team-name-edit label {
-    font-size: 0.85rem;
-    font-weight: 600;
-    color: #555;
-}
-
-.scoreboard {
-    display: grid;
-    grid-template-columns: 1fr 1fr;
-    gap: 12px;
-    padding: 0 14px 14px;
-    flex-shrink: 0;
-}
-
-.score-card {
-    background: #f7faf5;
-    border-radius: 18px;
-    padding: 16px 20px;
-    text-align: center;
-    border-bottom: 8px solid var(--green);
-    display: flex;
-    justify-content: center;
-    align-items: center;
-}
-
-.score-card.red {
-    border-bottom-color: var(--red);
-}
-
-.team-info {
-    display: flex;
-    flex-direction: column;
-    align-items: flex-start;
-    gap: 2px;
-}
-
-.team-name {
-    font-size: 1.2rem;
-    font-weight: 900;
-}
-
-.team-score {
-    font-size: 3.4rem;
-    font-weight: 900;
-    color: var(--green);
-    line-height: 1;
-}
-
-.score-card.red .team-score {
-    color: var(--red);
-}
-
-.team-wins {
-    display: flex;
-    align-items: center;
-    gap: 8px;
-    background: var(--dark);
-    color: white;
-    padding: 6px 16px;
-    border-radius: 10px;
-    font-weight: 700;
-    font-size: 1.2rem;
-    white-space: nowrap;
-}
-
-.team-wins span {
-    font-size: 1.4rem;
-}
-
-.kehren-wrapper {
-    flex: 1;
-    overflow-y: auto;
-    padding: 0 14px 14px;
-    min-height: 0;
-    overscroll-behavior: contain;
-    -webkit-overflow-scrolling: touch;
-    touch-action: pan-y;
-}
-
-.kehren-wrapper::-webkit-scrollbar {
-    width: 8px;
-}
-
-.kehren-wrapper::-webkit-scrollbar-track {
-    background: #f0f0f0;
-    border-radius: 10px;
-}
-
-.kehren-wrapper::-webkit-scrollbar-thumb {
-    background: var(--green);
-    border-radius: 10px;
-}
-
-.kehren-wrapper::-webkit-scrollbar-thumb:hover {
-    background: #0d3d22;
-}
-
-.kehren {
-    display: grid;
-    grid-template-columns: 1fr 1fr;
-    gap: 14px;
-}
-
-.kehren-title {
-    text-align: center;
-    font-weight: 900;
-    margin-bottom: 8px;
-}
-
-.kehre-row {
-    display: grid;
-    grid-template-columns: 90px 1fr 45px;
-    gap: 8px;
-    align-items: center;
-    background: white;
-    border: 2px solid var(--border);
-    border-radius: 14px;
-    padding: 8px;
-    margin-bottom: 8px;
-    transition: all 0.2s ease;
-    cursor: pointer;
-    touch-action: manipulation;
-}
-
-.kehre-row:active {
-    transform: scale(0.98);
-}
-
-.kehre-row.active {
-    border: 3px solid #4caf50;
-    background: #f3fff2;
-    box-shadow: 0 0 20px rgba(76, 175, 80, 0.2);
-}
-
-.kehre-row.completed {
-    border: 3px solid #ff9800;
-    background: #fff8e1;
-}
-
-.kehre-number {
-    font-size: .9rem;
-    font-weight: 900;
-    text-align: center;
-}
-
-.points {
-    display: flex;
-    gap: 6px;
-    justify-content: center;
-    flex-wrap: wrap;
-}
-
-.point-btn {
-    width: 44px;
-    height: 44px;
-    border-radius: 10px;
-    border: 2px solid var(--border);
-    background: white;
-    color: black;
-    font-weight: 900;
-    font-size: 16px;
-    touch-action: manipulation;
-    transition: all 0.15s;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-}
-
-.point-btn:active {
-    transform: scale(0.92);
-    background: var(--green);
-    color: white;
-}
-
-.point-btn.active-point {
-    background: var(--green);
-    color: white;
-    border-color: var(--green);
-}
-
-.kehre-value {
-    text-align: center;
-    font-weight: 900;
-    font-size: 1.1rem;
-}
-
-.footer {
-    position: sticky;
-    bottom: 0;
-    z-index: 100;
-    display: flex;
-    justify-content: center;
-    align-items: center;
-    gap: 10px;
-    flex-wrap: wrap;
-    padding: 14px;
-    border-top: 1px solid var(--border);
-    flex-shrink: 0;
-    background: white;
-}
-
-.footer .footer-left {
-    display: flex;
-    gap: 10px;
-    flex-wrap: wrap;
-    justify-content: center;
-}
-
-.footer .footer-right {
-    font-size: 0.85rem;
-    color: #555;
-    background: var(--light);
-    padding: 4px 14px;
-    border-radius: 30px;
-    font-weight: 500;
-    letter-spacing: 0.3px;
-    margin-left: 20px;
-}
-
-.gold {
-    background: var(--gold);
-    color: black;
-}
-
-.gold:active {
-    background: #f0c860;
-}
-
-.toast {
-    position: fixed;
-    bottom: 20px;
-    left: 50%;
-    transform: translateX(-50%);
-    background: #111;
-    color: white;
-    padding: 14px 20px;
-    border-radius: 14px;
-    opacity: 0;
-    transition: .3s;
-    z-index: 9999;
-    pointer-events: none;
-    font-size: 1rem;
-}
-
-.toast.show {
-    opacity: 1;
-}
-
-.player-selector {
-    display: flex;
-    gap: 8px;
-    align-items: center;
-    background: rgba(255,255,255,0.15);
-    padding: 4px 12px 4px 8px;
-    border-radius: 40px;
-}
-
-.player-selector label {
-    font-weight: 600;
-    font-size: 0.9rem;
-}
-
-.player-selector select {
-    background: white;
-    color: black;
-    padding: 6px 10px;
-    border-radius: 30px;
-    font-weight: 700;
-}
-
-/* Dialog für Kehrenauswahl */
-.kehren-dialog-overlay {
-    position: fixed;
-    top: 0;
-    left: 0;
-    right: 0;
-    bottom: 0;
-    background: rgba(0,0,0,0.5);
-    display: none;
-    justify-content: center;
-    align-items: center;
-    z-index: 10000;
-    touch-action: manipulation;
-}
-
-.kehren-dialog-overlay.show {
-    display: flex;
-}
-
-.kehren-dialog {
-    background: white;
-    border-radius: 22px;
-    padding: 30px;
-    max-width: 400px;
-    width: 90%;
-    box-shadow: 0 10px 40px rgba(0,0,0,0.3);
-    touch-action: manipulation;
-}
-
-.kehren-dialog h3 {
-    margin-bottom: 16px;
-    color: var(--green);
-    font-size: 1.4rem;
-}
-
-.kehren-dialog select {
-    width: 100%;
-    padding: 14px;
-    border: 2px solid var(--border);
-    border-radius: 12px;
-    font-size: 1.1rem;
-    margin-bottom: 16px;
-    min-height: 50px;
-    touch-action: manipulation;
-}
-
-.kehren-dialog .dialog-buttons {
-    display: flex;
-    gap: 10px;
-    justify-content: flex-end;
-}
-
-.kehren-dialog .dialog-buttons button {
-    padding: 12px 24px;
-    border-radius: 12px;
-    font-weight: 700;
-    min-height: 50px;
-    min-width: 90px;
-    touch-action: manipulation;
-}
-
-.kehren-dialog .dialog-buttons .btn-cancel {
-    background: #ccc;
-    color: #333;
-}
-
-.kehren-dialog .dialog-buttons .btn-confirm {
-    background: var(--red);
-    color: white;
-}
-
-/* ===== HILFE / BEDIENUNGSANLEITUNG ===== */
-.help-overlay {
-    position: fixed;
-    top: 0;
-    left: 0;
-    right: 0;
-    bottom: 0;
-    background: rgba(0,0,0,0.6);
-    display: none;
-    justify-content: center;
-    align-items: center;
-    z-index: 99998;
-    padding: 20px;
-    backdrop-filter: blur(4px);
-    -webkit-backdrop-filter: blur(4px);
-}
-
-.help-overlay.show {
-    display: flex;
-}
-
-.help-content {
-    background: white;
-    border-radius: 22px;
-    max-width: 700px;
-    width: 100%;
-    max-height: 90vh;
-    max-height: -webkit-fill-available;
-    overflow-y: auto;
-    padding: 30px;
-    box-shadow: 0 20px 60px rgba(0,0,0,0.4);
-    position: relative;
-    -webkit-overflow-scrolling: touch;
-}
-
-.help-content::-webkit-scrollbar {
-    width: 6px;
-}
-
-.help-content::-webkit-scrollbar-track {
-    background: #f0f0f0;
-    border-radius: 10px;
-}
-
-.help-content::-webkit-scrollbar-thumb {
-    background: var(--green);
-    border-radius: 10px;
-}
-
-.help-content h2 {
-    color: var(--green);
-    font-size: 1.8rem;
-    margin-bottom: 5px;
-    display: flex;
-    align-items: center;
-    gap: 10px;
-}
-
-.help-content .help-subtitle {
-    color: #666;
-    margin-bottom: 20px;
-    font-size: 0.95rem;
-}
-
-.help-content h3 {
-    color: var(--dark);
-    margin-top: 20px;
-    margin-bottom: 8px;
-    font-size: 1.1rem;
-    border-bottom: 2px solid var(--light);
-    padding-bottom: 4px;
-}
-
-.help-content ul,
-.help-content ol {
-    padding-left: 25px;
-    margin: 8px 0 12px;
-    line-height: 1.7;
-}
-
-.help-content li {
-    margin-bottom: 4px;
-}
-
-.help-content .help-close {
-    position: sticky;
-    bottom: 0;
-    background: white;
-    padding-top: 15px;
-    margin-top: 15px;
-    border-top: 1px solid var(--border);
-    display: flex;
-    justify-content: flex-end;
-    gap: 10px;
-}
-
-.help-content .help-close button {
-    padding: 12px 30px;
-    border-radius: 12px;
-    font-weight: 700;
-    background: var(--green);
-    color: white;
-    border: none;
-    cursor: pointer;
-    touch-action: manipulation;
-    min-height: 48px;
-}
-
-.help-content .help-tip {
-    background: var(--light);
-    padding: 10px 15px;
-    border-radius: 10px;
-    border-left: 4px solid var(--green);
-    margin: 10px 0;
-}
-
-.help-content .help-tip strong {
-    color: var(--green);
-}
-
-.help-content table {
-    width: 100%;
-    border-collapse: collapse;
-    margin: 10px 0;
-    font-size: 0.9rem;
-}
-
-.help-content table th {
-    background: var(--green);
-    color: white;
-    padding: 8px 12px;
-    text-align: left;
-}
-
-.help-content table td {
-    padding: 8px 12px;
-    border-bottom: 1px solid var(--border);
-}
-
-.help-content table tr:nth-child(even) {
-    background: #f9faf8;
-}
-
-/* ===== LOGIN OVERLAY ===== */
-.login-overlay {
-    position: fixed;
-    top: 0;
-    left: 0;
-    width: 100%;
-    height: 100%;
-    background: linear-gradient(135deg, #17351f, #0d1f13);
-    display: flex;
-    justify-content: center;
-    align-items: center;
-    z-index: 99999;
-    transition: opacity 0.5s;
-}
-
-.login-overlay.hidden {
-    opacity: 0;
-    pointer-events: none;
-}
-
-.login-box {
-    background: white;
-    padding: 40px;
-    border-radius: 30px;
-    max-width: 400px;
-    width: 90%;
-    box-shadow: 0 20px 60px rgba(0,0,0,0.3);
-    text-align: center;
-}
-
-.login-box h1 {
-    color: var(--green);
-    font-size: 2rem;
-    margin-bottom: 10px;
-}
-
-.login-box .subtitle {
-    color: #666;
-    margin-bottom: 30px;
-}
-
-.login-box input {
-    width: 100%;
-    padding: 16px 14px;
-    border: 2px solid var(--border);
-    border-radius: 12px;
-    font-size: 1.1rem;
-    margin-bottom: 15px;
-    box-sizing: border-box;
-    touch-action: manipulation;
-}
-
-.login-box input:focus {
-    outline: none;
-    border-color: var(--green);
-}
-
-.login-box button {
-    width: 100%;
-    padding: 16px;
-    background: var(--green);
-    color: white;
-    border: none;
-    border-radius: 12px;
-    font-size: 1.1rem;
-    font-weight: 700;
-    cursor: pointer;
-    transition: background 0.3s;
-    touch-action: manipulation;
-    min-height: 54px;
-}
-
-.login-box button:hover {
-    background: #0d3d22;
-}
-
-.login-box .error {
-    color: var(--red);
-    margin-top: 10px;
-    font-weight: 600;
-    min-height: 30px;
-}
-
-.login-box .admin-hint {
-    margin-top: 15px;
-    padding: 10px;
-    background: #f7faf5;
-    border-radius: 8px;
-    font-size: 0.8rem;
-    color: #666;
-}
-
-/* ===== ADMIN PANEL (DEAKTIVIERT) ===== */
-.admin-panel {
-    display: none;
-    /* Komplett ausgeblendet - Passwort kann nicht geändert werden */
-}
-
-/* ===== RESPONSIVE ===== */
-@media (max-width: 900px) {
-    .scoreboard {
-        grid-template-columns: 1fr;
-        gap: 8px;
-    }
-
-    .kehren {
-        grid-template-columns: 1fr;
-        gap: 10px;
-    }
-
-    .point-btn {
-        width: 58px;
-        height: 58px;
-        font-size: 22px;
-        border-radius: 12px;
-    }
-
-    .team-score {
-        font-size: 4rem;
-    }
-
-    .kehre-row {
-        grid-template-columns: 80px 1fr 50px;
-        padding: 10px;
-        border-radius: 16px;
-    }
-
-    .kehre-number {
-        font-size: 1rem;
-    }
-
-    .kehre-value {
-        font-size: 1.3rem;
-    }
-
-    .header h1 {
-        font-size: 1.3rem;
-    }
-
-    .footer .footer-right {
-        margin-left: 0;
-    }
-
-    .team-name-edit input {
-        width: 100px;
-        font-size: 0.8rem;
-    }
-
-    .arena-header {
-        flex-direction: column;
-        align-items: stretch;
-    }
-
-    .help-content {
-        padding: 20px;
-        max-height: 95vh;
-    }
-}
-
-@media (max-width: 600px) {
-    .point-btn {
-        width: 48px;
-        height: 48px;
-        font-size: 18px;
-    }
-
-    .kehre-row {
-        grid-template-columns: 60px 1fr 40px;
-        padding: 6px;
-        gap: 4px;
-    }
-
-    .team-score {
-        font-size: 3rem;
-    }
-
-    .header h1 {
-        font-size: 1.1rem;
-    }
-
-    .header-controls select,
-    .header-controls button {
-        padding: 6px 10px;
-        font-size: 0.85rem;
-    }
-}
-
-/* ===== TABLET OPTIMIERUNGEN ===== */
-@media (min-width: 601px) and (max-width: 1024px) {
-    .point-btn {
-        width: 64px;
-        height: 64px;
-        font-size: 24px;
-        border-radius: 14px;
-    }
-
-    .kehre-row {
-        grid-template-columns: 90px 1fr 55px;
-        padding: 12px;
-        border-radius: 18px;
-    }
-
-    .kehre-number {
-        font-size: 1.1rem;
-    }
-
-    .kehre-value {
-        font-size: 1.4rem;
-    }
-
-    .team-score {
-        font-size: 4.5rem;
-    }
-
-    .team-name {
-        font-size: 1.4rem;
-    }
-
-    button,
-    select,
-    input {
-        padding: 14px 18px;
-        font-size: 1.1rem;
-    }
-
-    button {
-        min-height: 54px;
-    }
-
-    .header h1 {
-        font-size: 1.6rem;
-    }
-
-    .footer .footer-left button {
-        padding: 12px 20px;
-        min-height: 50px;
-    }
-}
+  html, body { height: 100%; margin: 0; }
+  .shell { display: flex; height: 100vh; overflow: hidden; }
+
+  .inhalt { flex: 1; min-width: 0; display: flex; flex-direction: column; }
+  .inhalt-rahmen { flex: 1; border: none; width: 100%; height: 100%; background: var(--bg); }
+
+  .willkommen { flex: 1; display: flex; flex-direction: column; align-items: center; justify-content: center; text-align: center; padding: 20px; }
+  .willkommen h1 { margin-bottom: 8px; }
+
+  .modul-nav {
+    width: 240px; flex-shrink: 0; background: var(--bg-panel); border-right: 1px solid var(--line);
+    display: flex; flex-direction: column; align-items: flex-start; padding: 20px 16px; gap: 8px; overflow-y: auto;
+  }
+  .modul-nav .kopf { width: 100%; text-align: left; margin-bottom: 10px; }
+  .modul-nav .kopf .eyebrow { margin: 0 0 4px; }
+  .modul-nav .kopf h2 { font-family: var(--font-display); font-weight: 700; font-size: 18px; margin: 0; }
+  .modul-nav .kopf .turniername { color: var(--text-dim); font-size: 12.5px; margin-top: 2px; }
+
+  .modul-btn {
+    width: 100%; text-align: left; background: transparent; border: 1px solid var(--line); border-radius: 10px;
+    padding: 12px 14px; color: var(--text); cursor: pointer; font-family: var(--font-body); font-size: 14px;
+    transition: border-color .15s ease, background .15s ease;
+  }
+  .modul-btn .num { color: var(--accent); font-family: var(--font-display); font-weight: 700; margin-right: 6px; }
+  .modul-btn:hover { border-color: var(--line-hi); background: var(--bg-panel-hi); }
+  .modul-btn.active { border-color: var(--accent); background: var(--accent-soft); }
+
+  .turnier-aktionen { width: 100%; display: flex; flex-direction: column; gap: 8px; margin-bottom: 14px; }
+  .turnier-aktionen button {
+    width: 100%; text-align: left; background: var(--bg-panel-hi); border: 1px solid var(--line); border-radius: 10px;
+    padding: 10px 12px; color: var(--text); cursor: pointer; font-family: var(--font-body); font-size: 13px;
+  }
+  .turnier-aktionen button:hover { border-color: var(--line-hi); }
+  .trennlinie { width: 100%; border: none; border-top: 1px solid var(--line); margin: 4px 0 10px; }
+
+  .archiv-liste { width: 100%; display: none; flex-direction: column; gap: 6px; margin-bottom: 14px; max-height: 260px; overflow-y: auto; }
+  .archiv-liste.offen { display: flex; }
+  .archiv-eintrag {
+    width: 100%; display: flex; align-items: center; justify-content: space-between; gap: 6px;
+    background: var(--bg); border: 1px solid var(--line); border-radius: 8px; padding: 8px 10px; font-size: 12.5px;
+  }
+  .archiv-eintrag.aktiv { border-color: var(--accent); }
+  .archiv-eintrag .info { text-align: left; overflow: hidden; }
+  .archiv-eintrag .info .name { font-weight: 600; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  .archiv-eintrag .info .datum { color: var(--text-dim); font-size: 11px; }
+  .archiv-eintrag .aktionen { display: flex; gap: 4px; flex-shrink: 0; }
+  .archiv-eintrag button { background: transparent; border: 1px solid var(--line); border-radius: 6px; color: var(--text); padding: 4px 8px; font-size: 11px; cursor: pointer; }
+  .archiv-eintrag button:hover { border-color: var(--line-hi); }
+
+  @media (max-width: 760px) {
+    .shell { flex-direction: column; }
+    .modul-nav { width: 100%; flex-direction: row; flex-wrap: wrap; align-items: center; justify-content: flex-start; border-right: none; border-bottom: 1px solid var(--line); }
+    .modul-nav .kopf { width: auto; margin-right: auto; text-align: left; }
+    .modul-btn { width: auto; }
+  }
 </style>
 </head>
 <body>
-
-<!-- ===== LOGIN OVERLAY ===== -->
-<div class="login-overlay" id="loginOverlay">
-    <div class="login-box">
-        <h1>Stockschützen Trainingssystem</h1>
-        <div class="subtitle">Trainingssystem</div>
-
-        <input type="password" id="passwordInput" placeholder="Passwort eingeben..." autofocus>
-        <button onclick="checkPassword()">🔓 Zugang</button>
-
-        <div class="error" id="loginError"></div>
-
-        <div class="admin-hint">
-            🔑 Festes Passwort – Änderung nicht möglich
-        </div>
-    </div>
-</div>
-
-<!-- ===== HILFE / BEDIENUNGSANLEITUNG ===== -->
-<div class="help-overlay" id="helpOverlay" onclick="closeHelp(event)">
-    <div class="help-content" onclick="event.stopPropagation();">
-        <h2>📖 Bedienungsanleitung</h2>
-        <div class="help-subtitle">Stockschützen Trainingssystem</div>
-
-        <h3>1. Erster Zugriff & Login</h3>
-        <ol>
-            <li>Öffnen Sie die Datei in einem Browser</li>
-            <li>Geben Sie das <strong>Passwort</strong> ein: <code>ESV2024Grein</code></li>
-            <li>Klicken Sie auf <strong>"🔓 Zugang"</strong> oder drücken Sie <strong>Enter</strong></li>
-        </ol>
-
-        <h3>2. Das Hauptfenster</h3>
-        <ul>
-            <li><strong>Kopfzeile:</strong> Titel, Spieleranzahl, Einstellungen, Reset</li>
-            <li><strong>Punktestand:</strong> Gesamtpunkte + gewonnene Spiele</li>
-            <li><strong>Kehren-Bereich:</strong> Alle Kehren mit Punkte-Buttons (0–6)</li>
-            <li><strong>Fußzeile:</strong> Spiel werten, Neustart, Kehre löschen, Logout, Hilfe</li>
-        </ul>
-
-        <h3>3. So wird trainiert</h3>
-        <ul>
-            <li><strong>Spieleranzahl:</strong> Über das Dropdown <strong>"👥"</strong> einstellen (3–6)</li>
-            <li><strong>Kehrenanzahl:</strong> Über <strong>"Kehren"</strong> Dropdown wählen (4/6/8)</li>
-            <li><strong>Siege bis Trainingssieg:</strong> Über <strong>"Siege"</strong> Dropdown (2–6)</li>
-            <li><strong>Punkte eintragen:</strong> Klicken Sie auf einen Zahlen-Button (0–6) für das jeweilige Team</li>
-            <li><strong>Automatische Wertung:</strong> Wenn alle Kehren ausgefüllt sind, wird das Spiel automatisch gewertet</li>
-        </ul>
-
-        <div class="help-tip">
-            <strong>💡 Tipp:</strong> Die aktuelle Kehre wird durch einen <strong>grünen Rahmen</strong> markiert. Abgeschlossene Kehren haben einen <strong>orangen Rahmen</strong>.
-        </div>
-
-        <h3>4. Sonderfunktionen</h3>
-        <table>
-            <tr><th>Funktion</th><th>Button</th><th>Wirkung</th></tr>
-            <tr><td>Kehre löschen</td><td>"Kehre Löschen"</td><td>Löscht eine einzelne Kehre</td></tr>
-            <tr><td>Spiel zurücksetzen</td><td>"Neues Spiel Starten"</td><td>Löscht alle Kehren, Siege bleiben</td></tr>
-            <tr><td>Kompletter Reset</td><td>↺ (roter Button)</td><td>Setzt alles zurück (Punkte + Siege)</td></tr>
-            <tr><td>Logout</td><td>"🚪 Logout"</td><td>Sperrt die Anwendung</td></tr>
-        </table>
-
-        <h3>5. Teamnamen ändern</h3>
-        <ul>
-            <li>Geben Sie in den Textfeldern neben <strong>"⚪ Team 1"</strong> und <strong>"🔴 Team 2"</strong> die gewünschten Namen ein</li>
-            <li>Die Änderung wird sofort übernommen und gespeichert</li>
-        </ul>
-
-        <h3>6. Passwort</h3>
-        <ul>
-            <li>Das Passwort ist <strong>fest in der Datei codiert</strong> und kann nicht geändert werden</li>
-            <li>Bei Verlust muss die Datei neu vom Administrator bezogen werden</li>
-        </ul>
-
-        <div class="help-tip">
-            <strong>⚠️ Achtung:</strong> Das Passwort lautet: <code>ESV2024Grein</code>
-        </div>
-
-        <h3>7. Tastenkürzel</h3>
-        <table>
-            <tr><th>Taste</th><th>Funktion</th></tr>
-            <tr><td><kbd>Enter</kbd></td><td>Login bestätigen</td></tr>
-            <tr><td><kbd>ESC</kbd></td><td>Logout (mit Bestätigung)</td></tr>
-        </table>
-
-        <h3>8. Technische Hinweise</h3>
-        <ul>
-            <li><strong>Browser:</strong> Alle aktuellen Browser (Chrome, Firefox, Edge, Safari)</li>
-            <li><strong>Geräte:</strong> Desktop, Tablet, Smartphone (responsive)</li>
-            <li><strong>Datenspeicherung:</strong> Lokal im Browser – keine externen Server</li>
-            <li><strong>Datei:</strong> Einzelne HTML-Datei – keine Installation nötig</li>
-        </ul>
-
-        <div class="help-close">
-            <button onclick="closeHelp()">❌ Schließen</button>
-        </div>
-    </div>
-</div>
-
-<!-- ===== MAIN APP CONTENT ===== -->
-<div id="app-content" style="display:none; flex-direction:column; height:100%;">
-    <div class="header">
-        <h1>Stockschützen Trainingssystem</h1>
-
-        <div class="header-controls">
-            <div class="player-selector">
-                <label for="playerCount">👥</label>
-                <select id="playerCount">
-                    <option value="3">3 Spieler</option>
-                    <option value="4" selected>4 Spieler</option>
-                    <option value="5">5 Spieler</option>
-                    <option value="6">6 Spieler</option>
-                </select>
-            </div>
-
-            <select id="gamesSelect">
-                <option value="2" selected>2 Siege</option>
-                <option value="3">3 Siege</option>
-                <option value="4">4 Siege</option>
-                <option value="5">5 Siege</option>
-                <option value="6">6 Siege</option>
-            </select>
-
-            <select id="kehrenSelect">
-                <option value="4">4 Kehren</option>
-                <option value="6" selected>6 Kehren</option>
-                <option value="8">8 Kehren</option>
-            </select>
-
-            <button onclick="fullReset()" style="background:#b93a32;">↺</button>
-        </div>
+<div class="shell">
+  <div class="modul-nav">
+    <div class="kopf">
+      <p class="eyebrow">Stocksport</p>
+      <h2>Turnierverwaltung</h2>
+      <div class="turniername" id="turnierNameAnzeige"></div>
     </div>
 
-    <div class="layout" id="layout"></div>
-</div>
-
-<!-- Dialog für Kehrenauswahl -->
-<div class="kehren-dialog-overlay" id="kehrenDialog" onclick="closeKehrenDialog(event)">
-    <div class="kehren-dialog" onclick="event.stopPropagation();">
-        <h3>Kehre löschen</h3>
-        <p style="margin-bottom:12px;color:#666;">Wählen Sie die zu löschende Kehre:</p>
-        <select id="kehrenSelectDialog"></select>
-        <div class="dialog-buttons">
-            <button class="btn-cancel" onclick="closeKehrenDialog()">Abbrechen</button>
-            <button class="btn-confirm" onclick="confirmDeleteKehre()">Löschen</button>
-        </div>
+    <div class="turnier-aktionen">
+      <button onclick="neuesTurnierStarten()">🆕 Neues Turnier starten</button>
+      <button onclick="archivUmschalten()">🗂 Frühere Turniere<span id="archivPfeil"> ▾</span></button>
     </div>
+    <div class="archiv-liste" id="archivListe"></div>
+    <hr class="trennlinie">
+    <button class="modul-btn" data-modul="01_turniername.html" onclick="oeffneModul(this)"><span class="num">01</span>Turniername</button>
+    <button class="modul-btn" data-modul="02_mannschaften.html" onclick="oeffneModul(this)"><span class="num">02</span>Mannschaften</button>
+    <button class="modul-btn" data-modul="03_turnierplan.html" onclick="oeffneModul(this)"><span class="num">03</span>Turnierplan</button>
+    <button class="modul-btn" data-modul="04_wertungskarten.html" onclick="oeffneModul(this)"><span class="num">04</span>Wertungskarten</button>
+    <button class="modul-btn" data-modul="05_ergebnis.html" onclick="oeffneModul(this)"><span class="num">05</span>Ergebniseingabe</button>
+    <button class="modul-btn" data-modul="06_tabelle.html" onclick="oeffneModul(this)"><span class="num">06</span>Tabelle</button>
+    <button class="modul-btn" data-modul="07_anleitung.html" onclick="oeffneModul(this)"><span class="num">?</span>Anleitung</button>
+  </div>
+
+  <div class="inhalt">
+    <div class="willkommen" id="willkommen">
+      <p class="eyebrow">Turnierverwaltung</p>
+      <h1>Willkommen</h1>
+      <p class="lead">Wähle links ein Modul aus, um zu starten.</p>
+    </div>
+    <iframe id="modulRahmen" class="inhalt-rahmen" style="display:none;"></iframe>
+  </div>
 </div>
 
-<div class="toast" id="toast"></div>
-
+<script src="turnier.js"></script>
 <script>
-// ===== TEAM-NAMEN SPEICHER =====
-const TEAM_NAMES_KEY = 'stockschuetzen_team_names';
+function oeffneModul(btn) {
+    document.querySelectorAll('.modul-btn').forEach(b => b.classList.remove('active'));
+    btn.classList.add('active');
 
-function getTeamNames() {
-    let names = localStorage.getItem(TEAM_NAMES_KEY);
-    if (!names) {
-        names = JSON.stringify({
-            teamW: 'Mannschaft W',
-            teamE: 'Mannschaft E'
-        });
-        localStorage.setItem(TEAM_NAMES_KEY, names);
-    }
-    return JSON.parse(names);
+    document.getElementById('willkommen').style.display = 'none';
+    const rahmen = document.getElementById('modulRahmen');
+    rahmen.style.display = 'block';
+    rahmen.src = btn.dataset.modul;
 }
 
-function saveTeamNames(teamW, teamE) {
-    localStorage.setItem(TEAM_NAMES_KEY, JSON.stringify({
-        teamW: teamW,
-        teamE: teamE
-    }));
+async function ladeTurniernameAnzeige() {
+    const t = await tvLoad();
+    const turniername = (t.stammdaten || {}).turniername;
+    document.getElementById('turnierNameAnzeige').textContent = turniername || '(noch kein Name festgelegt)';
 }
 
-// ===== PASSWORT-SYSTEM (FESTES PASSWORT - KANN NICHT GEÄNDERT WERDEN) =====
-// ⚠️ ÄNDERN SIE HIER IHR PERSÖNLICHES PASSWORT:
-const MASTER_PASSWORD = 'grein2026rko';
+async function neuesTurnierStarten() {
+    const bestaetigt = confirm(
+        'Neues Turnier starten?\n\nDas aktuelle Turnier bleibt im Archiv erhalten und kann jederzeit ' +
+        'unter "Frühere Turniere" wieder geöffnet werden. Es werden also keine Daten gelöscht.'
+    );
+    if (!bestaetigt) return;
 
-function getStoredPassword() {
-    return MASTER_PASSWORD; // Festes Passwort - NICHT änderbar
-}
+    const ergebnis = await tvNeuesTurnier();
+    if (!ergebnis) return;
 
-function checkPassword() {
-    const input = document.getElementById('passwordInput');
-    const error = document.getElementById('loginError');
-    const storedPw = getStoredPassword();
-
-    if (input.value === storedPw) {
-        document.getElementById('loginOverlay').classList.add('hidden');
-        document.getElementById('app-content').style.display = 'flex';
-        error.textContent = '';
-        input.value = '';
-        input.blur();
-        render();
-    } else {
-        error.textContent = '❌ Falsches Passwort! Bitte versuche es erneut.';
-        input.value = '';
-        input.focus();
-        input.select();
+    await ladeTurniernameAnzeige();
+    document.querySelectorAll('.modul-btn').forEach(b => b.classList.remove('active'));
+    const rahmen = document.getElementById('modulRahmen');
+    rahmen.style.display = 'none';
+    rahmen.src = '';
+    document.getElementById('willkommen').style.display = 'flex';
+    if (document.getElementById('archivListe').classList.contains('offen')) {
+        await archivLaden();
     }
 }
 
-function logout() {
-    if (confirm('Möchten Sie sich wirklich ausloggen?')) {
-        document.getElementById('loginOverlay').classList.remove('hidden');
-        document.getElementById('app-content').style.display = 'none';
-        document.getElementById('passwordInput').value = '';
-        document.getElementById('passwordInput').focus();
-        document.getElementById('loginError').textContent = '';
+async function archivUmschalten() {
+    const liste = document.getElementById('archivListe');
+    const offen = liste.classList.toggle('offen');
+    document.getElementById('archivPfeil').textContent = offen ? ' ▴' : ' ▾';
+    if (offen) await archivLaden();
+}
+
+async function archivLaden() {
+    const liste = document.getElementById('archivListe');
+    liste.innerHTML = '<div style="color:var(--text-dim); font-size:12.5px;">Lade…</div>';
+    const turniere = await tvListeTurniere();
+    if (turniere.length === 0) {
+        liste.innerHTML = '<div style="color:var(--text-dim); font-size:12.5px;">Noch keine Turniere vorhanden.</div>';
+        return;
     }
-}
-
-document.getElementById('passwordInput').addEventListener('keydown', function(e) {
-    if (e.key === 'Enter') {
-        checkPassword();
-    }
-});
-
-// ===== ADMIN-PANEL DEAKTIVIERT =====
-// Die Funktionen sind deaktiviert, da das Admin-Panel ausgeblendet ist
-function toggleAdminModal() {
-    toast('⚠️ Passwort-Änderung deaktiviert');
-}
-
-function changePassword() {
-    toast('⚠️ Passwort-Änderung deaktiviert');
-}
-
-function updateCurrentPasswordDisplay() {
-    // Nicht benötigt bei festem Passwort
-}
-
-// ===== HILFE =====
-function openHelp() {
-    document.getElementById('helpOverlay').classList.add('show');
-    document.body.style.overflow = 'hidden';
-}
-
-function closeHelp(event) {
-    if (event && event.target !== event.currentTarget) return;
-    document.getElementById('helpOverlay').classList.remove('show');
-    document.body.style.overflow = '';
-}
-
-// Escape-Taste schließt Hilfe
-document.addEventListener('keydown', function(e) {
-    if (e.key === 'Escape') {
-        if (document.getElementById('helpOverlay').classList.contains('show')) {
-            closeHelp();
-        }
-    }
-});
-
-// ===== APP STATE =====
-const state = {
-    kehren: 6,
-    winsToChampion: 2,
-    playerCount: 4,
-    arena: createArena(1)
-};
-
-function createArena(id) {
-    const names = getTeamNames();
-    return {
-        id,
-        teamW: names.teamW,
-        teamE: names.teamE,
-        pointsW: Array(6).fill(null),
-        pointsE: Array(6).fill(null),
-        winsW: 0,
-        winsE: 0
-    };
-}
-
-function render() {
-    const appContent = document.getElementById('app-content');
-    if (appContent.style.display !== 'flex') return;
-    document.getElementById('layout').innerHTML = renderArena(state.arena);
-    setTimeout(scrollToActiveKehre, 100);
-
-    const names = getTeamNames();
-    const teamWInput = document.getElementById('teamWInput');
-    const teamEInput = document.getElementById('teamEInput');
-    if (teamWInput) teamWInput.value = names.teamW;
-    if (teamEInput) teamEInput.value = names.teamE;
-}
-
-function renderArena(arena) {
-    const scoreW = sum(arena.pointsW);
-    const scoreE = sum(arena.pointsE);
-    const names = getTeamNames();
-
-    return `
-    <div class="arena">
-        <div class="arena-header">
-            <div class="arena-title">Trainingssystem</div>
-            <div class="team-name-edit">
-                <div>
-                    <label>⚪ Team 1</label>
-                    <input type="text" id="teamWInput" class="team-w-input" 
-                           value="${names.teamW}" 
-                           onchange="updateTeamName('W', this.value)"
-                           placeholder="Team W Name">
-                </div>
-                <div>
-                    <label>🔴 Team 2</label>
-                    <input type="text" id="teamEInput" class="team-e-input" 
-                           value="${names.teamE}" 
-                           onchange="updateTeamName('E', this.value)"
-                           placeholder="Team E Name">
-                </div>
+    liste.innerHTML = '';
+    turniere.forEach(t => {
+        const eintrag = document.createElement('div');
+        eintrag.className = 'archiv-eintrag' + (t.aktiv ? ' aktiv' : '');
+        eintrag.innerHTML = `
+            <div class="info">
+              <div class="name">${t.turniername}</div>
+              <div class="datum">${t.datum || t.erstellt_am.split(' ')[0]}${t.aktiv ? ' · aktiv' : ''}</div>
             </div>
-        </div>
+            <div class="aktionen">
+              ${t.aktiv ? '' : `<button data-aktion="oeffnen" data-id="${t.id}">Öffnen</button>`}
+              <button data-aktion="loeschen" data-id="${t.id}">🗑</button>
+            </div>`;
+        liste.appendChild(eintrag);
+    });
 
-        <div class="scoreboard">
-            <div class="score-card red">
-                <div class="team-info">
-                    <div class="team-name">⚪ ${names.teamW}</div>
-                    <div class="team-score">${scoreW}</div>
-                </div>
-                <div class="team-wins">
-                    <span>🏆</span> ${arena.winsW}
-                </div>
-            </div>
-
-            <div class="score-card">
-                <div class="team-info">
-                    <div class="team-name">🔴 ${names.teamE}</div>
-                    <div class="team-score">${scoreE}</div>
-                </div>
-                <div class="team-wins">
-                    <span>🏆</span> ${arena.winsE}
-                </div>
-            </div>
-        </div>
-
-        <div class="kehren-wrapper" id="kehrenWrapper">
-            <div class="kehren">
-                <div>
-                    <div class="kehren-title">⚪ ${names.teamW}</div>
-                    ${renderKehren(arena, 'W')}
-                </div>
-                <div>
-                    <div class="kehren-title">🔴 ${names.teamE}</div>
-                    ${renderKehren(arena, 'E')}
-                </div>
-            </div>
-        </div>
-
-        <div class="footer">
-            <div class="footer-left">
-                <button class="gold" onclick="evaluateGame()">Spiel Werten</button>
-                <button onclick="resetGame()">Neues Spiel Starten</button>
-                <button onclick="openKehrenDialog()">Kehre Löschen</button>
-                <button onclick="logout()" style="background:var(--red);">🚪 Logout</button>
-                <button onclick="openHelp()" style="background:#555;">❓ Hilfe</button>
-            </div>
-            <div class="footer-right">Version 1.4</div>
-        </div>
-    </div>
-    `;
+    liste.querySelectorAll('button[data-aktion="oeffnen"]').forEach(btn => {
+        btn.onclick = async () => {
+            const ok = await tvTurnierAktivieren(Number(btn.dataset.id));
+            if (!ok) return;
+            await ladeTurniernameAnzeige();
+            await archivLaden();
+            // Aktuell geöffnetes Modul mit den Daten des neu aktivierten Turniers neu laden
+            const rahmen = document.getElementById('modulRahmen');
+            if (rahmen.src) rahmen.src = rahmen.src;
+        };
+    });
+    liste.querySelectorAll('button[data-aktion="loeschen"]').forEach(btn => {
+        btn.onclick = async () => {
+            const bestaetigt = confirm('Dieses Turnier endgültig löschen? Das kann nicht rückgängig gemacht werden.');
+            if (!bestaetigt) return;
+            const ok = await tvTurnierLoeschen(Number(btn.dataset.id));
+            if (!ok) return;
+            await ladeTurniernameAnzeige();
+            await archivLaden();
+            const rahmen = document.getElementById('modulRahmen');
+            if (rahmen.src) rahmen.src = rahmen.src;
+        };
+    });
 }
 
-function renderKehren(arena, team) {
-    let html = '';
-    const arr = team === 'W' ? arena.pointsW : arena.pointsE;
-    const activeIndex = activeKehre(arena) - 1;
-
-    for (let i = 0; i < state.kehren; i++) {
-        const active = activeIndex === i;
-        const isCompleted = arr[i] !== null;
-        const maxPoints = state.playerCount;
-
-        html += `
-        <div class="kehre-row ${active ? 'active' : ''} ${isCompleted ? 'completed' : ''}" 
-             data-kehre="${i}" 
-             data-team="${team}"
-             onclick="handleKehreClick(${i}, '${team}')">
-            <div class="kehre-number">${i + 1}</div>
-            <div class="points">
-                ${Array.from({length: maxPoints + 1}, (_, v) => `
-                    <button class="point-btn ${arr[i] === v ? 'active-point' : ''}"
-                            onclick="event.stopPropagation(); setPoints('${team}', ${i}, ${v})"
-                            data-value="${v}">
-                        ${v}
-                    </button>
-                `).join('')}
-            </div>
-            <div class="kehre-value">${arr[i] ?? '-'}</div>
-        </div>
-        `;
-    }
-
-    return html;
-}
-
-function updateTeamName(team, newName) {
-    const names = getTeamNames();
-    const trimmed = newName.trim() || (team === 'W' ? 'Mannschaft W' : 'Mannschaft E');
-
-    if (team === 'W') {
-        names.teamW = trimmed;
-        state.arena.teamW = trimmed;
-    } else {
-        names.teamE = trimmed;
-        state.arena.teamE = trimmed;
-    }
-
-    saveTeamNames(names.teamW, names.teamE);
-    render();
-    toast(`✅ Teamname geändert: ${trimmed}`);
-}
-
-function setPoints(team, index, value) {
-    const arena = state.arena;
-
-    if (hasWinner(arena)) {
-        toast('Training beendet');
-        return;
-    }
-
-    if (team === 'W') {
-        arena.pointsW[index] = value;
-    } else {
-        arena.pointsE[index] = value;
-    }
-
-    render();
-}
-
-function handleKehreClick(index, team) {
-    const arena = state.arena;
-    if (hasWinner(arena)) {
-        toast('Training beendet');
-        return;
-    }
-
-    const hasValue = arena.pointsW[index] !== null || arena.pointsE[index] !== null;
-    if (!hasValue) {
-        toast(`Kehre ${index + 1} ist bereits leer`);
-        return;
-    }
-
-    openKehrenDialog(index);
-}
-
-function scrollToActiveKehre() {
-    const wrapper = document.getElementById('kehrenWrapper');
-    if (!wrapper) return;
-
-    const activeRow = wrapper.querySelector('.kehre-row.active');
-    if (activeRow) {
-        const wrapperRect = wrapper.getBoundingClientRect();
-        const rowRect = activeRow.getBoundingClientRect();
-
-        const isVisible =
-            rowRect.top >= wrapperRect.top + 10 &&
-            rowRect.bottom <= wrapperRect.bottom - 10;
-
-        if (!isVisible) {
-            activeRow.scrollIntoView({
-                block: 'center',
-                behavior: 'smooth'
-            });
-        }
-    }
-}
-
-function evaluateGame() {
-    const arena = state.arena;
-    const names = getTeamNames();
-
-    if (hasWinner(arena)) {
-        toast('Training beendet');
-        return;
-    }
-
-    for (let i = 0; i < state.kehren; i++) {
-        if (arena.pointsW[i] === null || arena.pointsE[i] === null) {
-            toast('Bitte alle Kehren ausfüllen');
-            return;
-        }
-    }
-
-    const w = sum(arena.pointsW);
-    const e = sum(arena.pointsE);
-
-    if (w > e) {
-        arena.winsW++;
-        toast(`⚪ ${names.teamW} gewinnt (${w}:${e})`);
-    } else if (e > w) {
-        arena.winsE++;
-        toast(`🔴 ${names.teamE} gewinnt (${w}:${e})`);
-    } else {
-        toast(`Unentschieden (${w}:${e})`);
-    }
-
-    arena.pointsW = Array(state.kehren).fill(null);
-    arena.pointsE = Array(state.kehren).fill(null);
-
-    if (hasWinner(arena)) {
-        toast(`🏆 ${winnerName(arena)} gewinnt das Training!`);
-    }
-
-    render();
-}
-
-function activeKehre(arena) {
-    for (let i = 0; i < state.kehren; i++) {
-        if (arena.pointsW[i] === null || arena.pointsE[i] === null) {
-            return i + 1;
-        }
-    }
-    return state.kehren;
-}
-
-function hasWinner(arena) {
-    return arena.winsW >= state.winsToChampion || arena.winsE >= state.winsToChampion;
-}
-
-function winnerName(arena) {
-    const names = getTeamNames();
-    if (arena.winsW >= state.winsToChampion) return names.teamW;
-    if (arena.winsE >= state.winsToChampion) return names.teamE;
-    return '';
-}
-
-function sum(arr) {
-    return arr.reduce((a, b) => a + (b || 0), 0);
-}
-
-function resetGame() {
-    const arena = state.arena;
-    arena.pointsW = Array(state.kehren).fill(null);
-    arena.pointsE = Array(state.kehren).fill(null);
-    arena.winsW = 0;
-    arena.winsE = 0;
-    render();
-    toast('Spiel neu gestartet');
-}
-
-function openKehrenDialog(preSelectedIndex) {
-    const arena = state.arena;
-    if (hasWinner(arena)) {
-        toast('Training beendet');
-        return;
-    }
-
-    const dialog = document.getElementById('kehrenDialog');
-    const select = document.getElementById('kehrenSelectDialog');
-
-    select.innerHTML = '';
-    let hasValues = false;
-
-    for (let i = 0; i < state.kehren; i++) {
-        const option = document.createElement('option');
-        option.value = i;
-        const hasValue = arena.pointsW[i] !== null || arena.pointsE[i] !== null;
-        if (hasValue) hasValues = true;
-        option.textContent = `Kehre ${i + 1} ${hasValue ? '✏️' : '⬜'}`;
-        select.appendChild(option);
-    }
-
-    if (!hasValues) {
-        toast('Alle Kehren sind bereits leer');
-        return;
-    }
-
-    if (preSelectedIndex !== undefined) {
-        select.value = preSelectedIndex;
-    }
-
-    dialog.classList.add('show');
-    document.body.style.overflow = 'hidden';
-}
-
-function closeKehrenDialog(event) {
-    if (event && event.target !== event.currentTarget) return;
-    document.getElementById('kehrenDialog').classList.remove('show');
-    document.body.style.overflow = '';
-}
-
-function confirmDeleteKehre() {
-    const arena = state.arena;
-    const select = document.getElementById('kehrenSelectDialog');
-    const index = parseInt(select.value);
-
-    if (arena.pointsW[index] === null && arena.pointsE[index] === null) {
-        toast(`Kehre ${index + 1} ist bereits leer`);
-        closeKehrenDialog();
-        return;
-    }
-
-    arena.pointsW[index] = null;
-    arena.pointsE[index] = null;
-
-    render();
-    toast(`Kehre ${index + 1} gelöscht`);
-    closeKehrenDialog();
-}
-
-function fullReset() {
-    const names = getTeamNames();
-    state.arena = createArena(1);
-    state.arena.teamW = names.teamW;
-    state.arena.teamE = names.teamE;
-    render();
-    toast('Kompletter Reset - Teamnamen bleiben erhalten');
-}
-
-function toast(msg) {
-    const t = document.getElementById('toast');
-    t.textContent = msg;
-    t.classList.add('show');
-    clearTimeout(t._timeout);
-    t._timeout = setTimeout(() => t.classList.remove('show'), 2500);
-}
-
-// ===== EVENT-LISTENER =====
-document.getElementById('playerCount').addEventListener('change', function(e) {
-    state.playerCount = Number(e.target.value);
-    render();
-    toast(`👥 ${state.playerCount} Spieler`);
-});
-
-document.getElementById('kehrenSelect').addEventListener('change', function(e) {
-    state.kehren = Number(e.target.value);
-    state.arena.pointsW = Array(state.kehren).fill(null);
-    state.arena.pointsE = Array(state.kehren).fill(null);
-    render();
-});
-
-document.getElementById('gamesSelect').addEventListener('change', function(e) {
-    state.winsToChampion = Number(e.target.value);
-    render();
-});
-
-// ===== HÖHENKORREKTUR FÜR TABLETS =====
-function setCorrectHeight() {
-    const vh = window.innerHeight;
-    document.documentElement.style.setProperty('height', vh + 'px');
-    document.body.style.setProperty('height', vh + 'px');
-
-    // Für Safari auf iOS
-    if (navigator.userAgent.includes('Safari') && !navigator.userAgent.includes('Chrome')) {
-        document.documentElement.style.setProperty('height', '-webkit-fill-available');
-        document.body.style.setProperty('height', '-webkit-fill-available');
-    }
-}
-
-window.addEventListener('resize', function() {
-    setTimeout(setCorrectHeight, 100);
-});
-
-window.addEventListener('orientationchange', function() {
-    setTimeout(setCorrectHeight, 300);
-    setTimeout(render, 400);
-});
-
-// Initiale Höhenkorrektur
-setCorrectHeight();
-
-// ===== INIT =====
-render();
-
-// Wenn die App geladen ist, einmal neu rendern
-setTimeout(function() {
-    if (document.getElementById('app-content').style.display === 'flex') {
-        render();
-    }
-}, 200);
+ladeTurniernameAnzeige();
 </script>
-
 </body>
 </html>

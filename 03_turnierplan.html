@@ -1,0 +1,210 @@
+<!DOCTYPE html>
+<html lang="de">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no">
+<title>03 · Turnierplan – Turnierverwaltung</title>
+<link rel="stylesheet" href="style.css">
+<style>
+  .runde-block { margin-bottom: 22px; }
+  .runde-title { font-family: var(--font-display); font-weight: 700; font-size: 16px; color: var(--accent); margin-bottom: 10px; }
+  .gruppen-title { font-family: var(--font-display); font-weight: 700; font-size: 20px; margin: 26px 0 14px; padding-top: 14px; border-top: 1px solid var(--line); }
+  .gruppen-title:first-of-type { border-top: none; padding-top: 0; }
+  .durchgang-label { font-size: 12px; text-transform: uppercase; letter-spacing: .06em; color: var(--text-dim); margin: 10px 0 6px; }
+  .bye-note { color: var(--text-dim); font-size: 13px; margin-top: 6px; }
+</style>
+</head>
+<body>
+<div class="wrap">
+  <div class="topbar">
+    <a class="back" href="index.html">&larr; Zurück zum Dashboard</a>
+    <span class="step">Schritt 03 von 06</span>
+  </div>
+  <p class="eyebrow">Turnierverwaltung</p>
+  <h1>Turnierplan</h1>
+  <p class="lead">Jede Mannschaft spielt gegen jede – automatisch verteilt auf die eingegebenen Bahnen. Ab mehr als 9 Mannschaften wird per Zufallslosung in 2 Gruppen gespielt.</p>
+
+  <div id="warnBox" class="warn-box" style="display:none;"></div>
+  <div id="ladeHinweis" class="hint-box">Lade Daten…</div>
+
+  <div class="actions">
+    <button id="btnErstellen" onclick="planErstellen()">Spielplan erstellen</button>
+    <a class="btn btn-secondary" href="04_wertungskarten.html">Weiter zu Wertungskarten &rarr;</a>
+  </div>
+
+  <div id="infoBox" class="info-box" style="display:none;"></div>
+  <div id="planContainer"></div>
+</div>
+
+<div class="toast" id="toast"></div>
+
+<script src="turnier.js"></script>
+<script>
+function zeigeWarnung(html) {
+    const box = document.getElementById('warnBox');
+    box.innerHTML = html;
+    box.style.display = 'block';
+}
+
+async function planErstellen() {
+    const btn = document.getElementById('btnErstellen');
+    btn.disabled = true; btn.textContent = 'Erstelle…';
+
+    const t = await tvLoad();
+    const stammdaten = t.stammdaten || {};
+    const mannschaften = t.mannschaften || [];
+
+    if (!stammdaten.anzahlBahnen) {
+        zeigeWarnung('Bitte zuerst unter <a href="01_turniername.html" style="color:var(--accent);">Turniername</a> die Anzahl der Bahnen festlegen.');
+        btn.disabled = false; btn.textContent = 'Spielplan erstellen';
+        return;
+    }
+    const gueltige = mannschaften.filter(m => m.name && m.name.trim());
+    if (gueltige.length < 2) {
+        zeigeWarnung('Bitte zuerst unter <a href="02_mannschaften.html" style="color:var(--accent);">Mannschaften</a> mindestens 2 Mannschaften mit Namen anlegen.');
+        btn.disabled = false; btn.textContent = 'Spielplan erstellen';
+        return;
+    }
+    document.getElementById('warnBox').style.display = 'none';
+
+    const teamsMitId = gueltige.map((m, i) => ({ id: m.id || ('team' + i), name: m.name }));
+    gueltige.forEach((m, i) => { if (!m.id) m.id = teamsMitId[i].id; });
+
+    let spiele, info;
+
+    if (tvGruppenmodusAktiv(teamsMitId.length)) {
+        const { gruppe1, gruppe2 } = tvTeileInGruppen(teamsMitId);
+        const { bahnenGr1, bahnenGr2 } = tvTeileBahnen(stammdaten.anzahlBahnen);
+
+        gruppe1.forEach(t2 => { const m = gueltige.find(m => m.id === t2.id); if (m) m.gruppe = 1; });
+        gruppe2.forEach(t2 => { const m = gueltige.find(m => m.id === t2.id); if (m) m.gruppe = 2; });
+
+        const plan1 = tvErstelleRundenplan(gruppe1);
+        const plan2 = tvErstelleRundenplan(gruppe2);
+        const spiele1 = tvVerteileAufBahnen(plan1.runden, bahnenGr1).map(s => ({ ...s, phase: 'gruppe', gruppe: 1 }));
+        const spiele2 = tvVerteileAufBahnen(plan2.runden, bahnenGr2).map(s => ({
+            ...s, phase: 'gruppe', gruppe: 2, bahn: s.bahn + bahnenGr1
+        }));
+        // Eindeutige IDs über beide Gruppen hinweg
+        let laufendeId = 1;
+        spiele = [...spiele1, ...spiele2].map(s => ({ ...s, id: 'sp' + (laufendeId++) }));
+
+        info = { gruppenmodus: true, gruppe1, gruppe2, bahnenGr1, bahnenGr2, runden1: plan1.runden.length, runden2: plan2.runden.length, hatFreilos1: plan1.hatFreilos, hatFreilos2: plan2.hatFreilos };
+    } else {
+        const { runden, hatFreilos } = tvErstelleRundenplan(teamsMitId);
+        spiele = tvVerteileAufBahnen(runden, stammdaten.anzahlBahnen);
+        info = { gruppenmodus: false, teams: teamsMitId, runden: runden.length, hatFreilos, bahnenCount: stammdaten.anzahlBahnen };
+    }
+
+    const ergebnis = await tvSave({ mannschaften, spielplan: spiele });
+    btn.disabled = false; btn.textContent = 'Spielplan erstellen';
+    if (ergebnis === null) return;
+
+    renderGesamtplan(spiele, mannschaften, info);
+    tvToast('Turnierplan erstellt und gespeichert.', 'success');
+}
+
+function renderRunden(container, spiele, teams, rundenAnzahl) {
+    for (let r = 1; r <= rundenAnzahl; r++) {
+        const spieleDerRunde = spiele.filter(s => s.runde === r);
+        if (spieleDerRunde.length === 0) continue;
+
+        const block = document.createElement('div');
+        block.className = 'runde-block';
+        block.innerHTML = `<div class="runde-title">Runde ${r}</div>`;
+
+        const spielendeTeams = new Set();
+        spieleDerRunde.forEach(s => { spielendeTeams.add(s.teamA); spielendeTeams.add(s.teamB); });
+        const freilosTeam = teams.find(t => !spielendeTeams.has(t.id));
+
+        const durchgaenge = [...new Set(spieleDerRunde.map(s => s.durchgang))].sort((a, b) => a - b);
+        durchgaenge.forEach(dg => {
+            if (durchgaenge.length > 1) {
+                const label = document.createElement('div');
+                label.className = 'durchgang-label';
+                label.textContent = `Durchgang ${dg}`;
+                block.appendChild(label);
+            }
+            const table = document.createElement('table');
+            table.className = 'data';
+            table.innerHTML = '<tr><th>Bahn</th><th>Mannschaft A</th><th>Mannschaft B</th></tr>';
+            spieleDerRunde.filter(s => s.durchgang === dg).sort((a, b) => a.bahn - b.bahn).forEach(s => {
+                const tr = document.createElement('tr');
+                tr.innerHTML = `<td>Bahn ${s.bahn}</td><td class="left">${tvTeamName(teams, s.teamA)}</td><td class="left">${tvTeamName(teams, s.teamB)}</td>`;
+                table.appendChild(tr);
+            });
+            block.appendChild(table);
+        });
+
+        if (freilosTeam) {
+            const note = document.createElement('div');
+            note.className = 'bye-note';
+            note.textContent = `Spielfrei: ${freilosTeam.name}`;
+            block.appendChild(note);
+        }
+        container.appendChild(block);
+    }
+}
+
+function renderGesamtplan(spiele, mannschaften, info) {
+    const infoBox = document.getElementById('infoBox');
+    const container = document.getElementById('planContainer');
+    container.innerHTML = '';
+    infoBox.style.display = 'block';
+
+    if (info.gruppenmodus) {
+        infoBox.innerHTML = `<strong>${mannschaften.length} Mannschaften</strong> – per Zufallslosung in 2 Gruppen aufgeteilt: `
+            + `<strong>Gruppe 1</strong> (${info.gruppe1.length} Mannschaften, ${info.bahnenGr1} Bahnen) und `
+            + `<strong>Gruppe 2</strong> (${info.gruppe2.length} Mannschaften, ${info.bahnenGr2} Bahnen). `
+            + `Nach der Gruppenphase folgen Kreuzspiele (Plätze 1–4 je Gruppe), Halbfinale und Finale – das läuft über das Modul „Tabelle", sobald die Gruppenspiele ausgewertet sind.`;
+
+        const titel1 = document.createElement('div');
+        titel1.className = 'gruppen-title';
+        titel1.textContent = 'Gruppe 1';
+        container.appendChild(titel1);
+        renderRunden(container, spiele.filter(s => s.gruppe === 1), info.gruppe1, info.runden1);
+
+        const titel2 = document.createElement('div');
+        titel2.className = 'gruppen-title';
+        titel2.textContent = 'Gruppe 2';
+        container.appendChild(titel2);
+        renderRunden(container, spiele.filter(s => s.gruppe === 2), info.gruppe2, info.runden2);
+    } else {
+        infoBox.innerHTML = `<strong>${info.teams.length} Mannschaften</strong> · <strong>${info.runden} Runden</strong> · `
+            + `<strong>${spiele.length} Spiele</strong> gesamt auf <strong>${info.bahnenCount} Bahnen</strong>.`
+            + (info.hatFreilos ? ' Ungerade Mannschaftsanzahl – pro Runde hat eine Mannschaft spielfrei.' : '');
+        renderRunden(container, spiele, info.teams, info.runden);
+    }
+}
+
+document.addEventListener('DOMContentLoaded', async () => {
+    const t = await tvLoad();
+    document.getElementById('ladeHinweis').style.display = 'none';
+    const spielplan = (t.spielplan || []).filter(s => s.phase === 'gruppe' || !s.phase);
+    if (spielplan.length === 0 || !Array.isArray(t.mannschaften)) return;
+
+    const mannschaften = t.mannschaften;
+    const gruppenmodus = mannschaften.some(m => m.gruppe === 1 || m.gruppe === 2);
+
+    if (gruppenmodus) {
+        const gruppe1 = mannschaften.filter(m => m.gruppe === 1).map(m => ({ id: m.id, name: m.name }));
+        const gruppe2 = mannschaften.filter(m => m.gruppe === 2).map(m => ({ id: m.id, name: m.name }));
+        const spieleGr1 = spielplan.filter(s => s.gruppe === 1);
+        const spieleGr2 = spielplan.filter(s => s.gruppe === 2);
+        const info = {
+            gruppenmodus: true, gruppe1, gruppe2,
+            bahnenGr1: Math.max(...spieleGr1.map(s => s.bahn), 0),
+            bahnenGr2: spieleGr2.length ? Math.max(...spieleGr2.map(s => s.bahn)) - Math.max(...spieleGr1.map(s => s.bahn), 0) : 0,
+            runden1: spieleGr1.length ? Math.max(...spieleGr1.map(s => s.runde)) : 0,
+            runden2: spieleGr2.length ? Math.max(...spieleGr2.map(s => s.runde)) : 0
+        };
+        renderGesamtplan(spielplan, mannschaften, info);
+    } else {
+        const teams = mannschaften.map(m => ({ id: m.id, name: m.name }));
+        const info = { gruppenmodus: false, teams, runden: Math.max(...spielplan.map(s => s.runde)), hatFreilos: false, bahnenCount: (t.stammdaten || {}).anzahlBahnen || 1 };
+        renderGesamtplan(spielplan, mannschaften, info);
+    }
+});
+</script>
+</body>
+</html>

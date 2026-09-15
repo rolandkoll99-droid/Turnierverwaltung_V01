@@ -1,0 +1,366 @@
+<!DOCTYPE html>
+<html lang="de">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no">
+<title>06 · Tabelle – Turnierverwaltung</title>
+<link rel="stylesheet" href="style.css">
+<style>
+  #druckBereich { display: none; }
+  .druck-seite { background: #fff; color: #111; width: 190mm; margin: 0 auto; padding: 10mm; font-family: Arial, Helvetica, sans-serif; }
+  .druck-seite .kopf { margin-bottom: 18px; }
+  .druck-seite .kopf .titel { font-size: 20px; font-weight: 700; margin-bottom: 6px; }
+  .druck-seite .kopf div { font-size: 13px; margin-bottom: 2px; }
+  .druck-seite h2 { font-size: 18px; margin: 20px 0 12px; }
+  .druck-seite h2:first-of-type { margin-top: 0; }
+  table.druck-tabelle { width: 100%; border-collapse: collapse; font-size: 12px; }
+  table.druck-tabelle th, table.druck-tabelle td { border: 1px solid #999; padding: 6px 8px; text-align: center; vertical-align: top; }
+  table.druck-tabelle th { background: #eee; }
+  table.druck-tabelle td.mannschaft { text-align: left; }
+  table.druck-tabelle td.mannschaft .name { font-weight: 700; }
+  table.druck-tabelle td.mannschaft .spieler { font-size: 11px; color: #444; margin-top: 2px; }
+  @media print {
+    @page { size: A4 portrait; margin: 12mm; }
+    #druckBereich { display: block; }
+  }
+
+  .gruppen-tabellen { display: grid; grid-template-columns: 1fr 1fr; gap: 20px; }
+  @media (max-width: 800px) { .gruppen-tabellen { grid-template-columns: 1fr; } }
+  .abschnitt-title { font-family: var(--font-display); font-weight: 700; font-size: 18px; margin: 24px 0 10px; padding-top: 14px; border-top: 1px solid var(--line); }
+  .abschnitt-title:first-of-type { border-top: none; padding-top: 0; margin-top: 4px; }
+  .bracket-hinweis { font-size: 13px; color: var(--text-dim); margin-top: 8px; }
+  body.monitor #tabelleContainer button { display: none; }
+</style>
+</head>
+<body>
+<div class="wrap">
+  <div class="topbar">
+    <a class="back" href="index.html">&larr; Zurück zum Dashboard</a>
+    <span class="step">Schritt 06 von 06</span>
+  </div>
+  <p class="eyebrow" id="eyebrowTurniername">Turnierverwaltung</p>
+  <h1>Tabelle</h1>
+  <p class="lead">Platzierung nach Punkten, bei Gleichstand entscheidet die Stockpunktdifferenz. Aktualisiert sich automatisch.</p>
+
+  <div id="warnBox" class="warn-box" style="display:none;"></div>
+  <div id="ladeHinweis" class="hint-box">Lade Daten…</div>
+
+  <div class="actions">
+    <button onclick="oeffneMonitor()">🖥️ Auf Zuschauermonitor öffnen</button>
+    <button class="btn-secondary" onclick="alsPdfExportieren()">📄 Als PDF exportieren</button>
+  </div>
+
+  <div id="tabelleContainer"></div>
+</div>
+
+<div id="druckBereich"></div>
+
+<div class="toast" id="toast"></div>
+
+<script src="turnier.js"></script>
+<script>
+const params = new URLSearchParams(window.location.search);
+const istMonitor = params.get('monitor') === '1';
+if (istMonitor) document.body.classList.add('monitor');
+
+function oeffneMonitor() {
+    const url = new URL('06_tabelle.html?monitor=1', window.location.href).href;
+    window.top.open(url, '_blank');
+}
+
+function spielerListe(team) {
+    if (!team || !Array.isArray(team.spieler)) return '';
+    return team.spieler.filter(s => s && s.trim()).join(', ');
+}
+
+function tabelleZeilenHtml(liste, mannschaften, startNr) {
+    return liste.map((s, i) => {
+        const team = mannschaften.find(m => m.id === s.id);
+        const gegnerPunkte = s.spiele * 2 - s.punkte;
+        return `
+        <tr>
+          <td>${i + 1}</td>
+          <td>${startNr[s.id] || ''}</td>
+          <td class="mannschaft">
+            <div class="name">${s.name}</div>
+            <div class="spieler">${spielerListe(team)}</div>
+          </td>
+          <td>${s.punkte}:${gegnerPunkte}</td>
+          <td>${s.diff > 0 ? '+' : ''}${s.diff}</td>
+          <td>${s.stockEigen}</td>
+          <td>${s.stockFremd}</td>
+        </tr>`;
+    }).join('');
+}
+
+function gesamtZeilenHtml(liste, mannschaften, startNr) {
+    return liste.map(s => {
+        const team = mannschaften.find(m => m.id === s.id);
+        return `
+        <tr>
+          <td>${s.platz}</td>
+          <td>${startNr[s.id] || ''}</td>
+          <td class="mannschaft">
+            <div class="name">${s.name}</div>
+            <div class="spieler">${spielerListe(team)}</div>
+          </td>
+          <td>${s.punkte ?? ''}</td>
+          <td>${s.diff > 0 ? '+' : ''}${s.diff ?? ''}</td>
+        </tr>`;
+    }).join('');
+}
+
+async function alsPdfExportieren() {
+    const t = await tvLoad();
+    const spielplan = t.spielplan || [];
+    if (spielplan.length === 0) {
+        tvToast('Es gibt noch keine Tabelle zum Exportieren.', 'error');
+        return;
+    }
+    const mannschaften = t.mannschaften || [];
+    const stammdaten = t.stammdaten || {};
+    const startNr = {};
+    mannschaften.forEach((m, i) => { startNr[m.id] = i + 1; });
+
+    const kopfHtml = `
+      <div class="kopf">
+        <div class="titel">${stammdaten.turniername || 'Turnier'}</div>
+        <div><strong>Austragungsort:</strong> ${stammdaten.ort || ''}</div>
+        <div><strong>Datum:</strong> ${stammdaten.datum || ''}</div>
+      </div>`;
+
+    const finaleFertig = spielplan.some(s => s.phase === 'finale') && tvSiegerId(spielplan.find(s => s.phase === 'finale'), t.ergebnisse || {});
+
+    let inhalt;
+    if (finaleFertig) {
+        const gesamt = tvBerechneGesamttabelle(t);
+        inhalt = `<h2>Endergebnis (Gesamt)</h2>
+        <table class="druck-tabelle">
+          <tr><th>Platz</th><th>Start-Nr.</th><th>Mannschaft</th><th>Gr.-Punkte</th><th>Gr.-Diff.</th></tr>
+          ${gesamtZeilenHtml(gesamt, mannschaften, startNr)}
+        </table>`;
+    } else if (mannschaften.some(m => m.gruppe === 1 || m.gruppe === 2)) {
+        const gr1Teams = mannschaften.filter(m => m.gruppe === 1);
+        const gr2Teams = mannschaften.filter(m => m.gruppe === 2);
+        const tabelleGr1 = tvBerechneTabelle({ ...t, mannschaften: gr1Teams, spielplan: spielplan.filter(s => s.gruppe === 1) });
+        const tabelleGr2 = tvBerechneTabelle({ ...t, mannschaften: gr2Teams, spielplan: spielplan.filter(s => s.gruppe === 2) });
+        inhalt = `<h2>Gruppe 1 (Zwischenstand)</h2>
+        <table class="druck-tabelle">
+          <tr><th>Platz</th><th>Start-Nr.</th><th>Mannschaft</th><th>Punkte</th><th>Diff.</th><th>Eigene</th><th>Gegner</th></tr>
+          ${tabelleZeilenHtml(tabelleGr1, mannschaften, startNr)}
+        </table>
+        <h2>Gruppe 2 (Zwischenstand)</h2>
+        <table class="druck-tabelle">
+          <tr><th>Platz</th><th>Start-Nr.</th><th>Mannschaft</th><th>Punkte</th><th>Diff.</th><th>Eigene</th><th>Gegner</th></tr>
+          ${tabelleZeilenHtml(tabelleGr2, mannschaften, startNr)}
+        </table>`;
+    } else {
+        const liste = tvBerechneTabelle(t);
+        inhalt = `<h2>Endergebnis</h2>
+        <table class="druck-tabelle">
+          <tr><th>Rang</th><th>Start-Nr.</th><th>Mannschaft</th><th>Punkte</th><th>Diff.</th><th>Eigene</th><th>Gegner</th></tr>
+          ${tabelleZeilenHtml(liste, mannschaften, startNr)}
+        </table>`;
+    }
+
+    document.getElementById('druckBereich').innerHTML = `<div class="druck-seite">${kopfHtml}${inhalt}</div>`;
+    window.print();
+}
+
+function tabelleAlsHtml(liste) {
+    const table = document.createElement('table');
+    table.className = 'data';
+    table.innerHTML = `<tr><th>Platz</th><th>Mannschaft</th><th>Spiele</th><th>Punkte</th><th>Stockpunkte eigen</th><th>Stockpunkte fremd</th><th>Differenz</th></tr>`;
+    liste.forEach((s, i) => {
+        const tr = document.createElement('tr');
+        tr.innerHTML = `<td>${tvRankBadge(i + 1)}</td><td class="left">${s.name}</td><td>${s.spiele}</td><td>${s.punkte}</td><td>${s.stockEigen}</td><td>${s.stockFremd}</td><td>${s.diff > 0 ? '+' : ''}${s.diff}</td>`;
+        table.appendChild(tr);
+    });
+    return table;
+}
+
+async function kreuzspieleErstellen() {
+    const t = await tvLoad();
+    const mannschaften = t.mannschaften || [];
+    const spielplan = t.spielplan || [];
+    const gr1Teams = mannschaften.filter(m => m.gruppe === 1);
+    const gr2Teams = mannschaften.filter(m => m.gruppe === 2);
+    const tabelleGr1 = tvBerechneTabelle({ ...t, mannschaften: gr1Teams, spielplan: spielplan.filter(s => s.gruppe === 1) });
+    const tabelleGr2 = tvBerechneTabelle({ ...t, mannschaften: gr2Teams, spielplan: spielplan.filter(s => s.gruppe === 2) });
+    if (tabelleGr1.length < 4 || tabelleGr2.length < 4) {
+        tvToast('Für Kreuzspiele werden mindestens 4 Mannschaften pro Gruppe benötigt.', 'error');
+        return;
+    }
+    const kreuzspiele = tvErstelleKreuzspiele(tabelleGr1, tabelleGr2, (t.stammdaten || {}).anzahlBahnen);
+    await tvSave({ spielplan: [...spielplan, ...kreuzspiele] });
+    tvToast('Kreuzspiele erstellt. Weiter geht’s bei der Ergebniseingabe.', 'success');
+    renderTabelle();
+}
+
+async function halbfinaleErstellen() {
+    const t = await tvLoad();
+    const spielplan = t.spielplan || [];
+    const kreuzspiele = spielplan.filter(s => s.phase === 'kreuzspiel');
+    const halbfinale = tvErstelleHalbfinale(kreuzspiele, t.ergebnisse || {}, (t.stammdaten || {}).anzahlBahnen);
+    if (!halbfinale) {
+        tvToast('Bitte zuerst alle 4 Kreuzspiele auswerten.', 'error');
+        return;
+    }
+    await tvSave({ spielplan: [...spielplan, ...halbfinale] });
+    tvToast('Halbfinale erstellt. Weiter geht’s bei der Ergebniseingabe.', 'success');
+    renderTabelle();
+}
+
+async function finaleErstellen() {
+    const t = await tvLoad();
+    const spielplan = t.spielplan || [];
+    const halbfinale = spielplan.filter(s => s.phase === 'halbfinale');
+    const finale = tvErstelleFinale(halbfinale, t.ergebnisse || {});
+    if (!finale) {
+        tvToast('Bitte zuerst beide Halbfinale auswerten.', 'error');
+        return;
+    }
+    await tvSave({ spielplan: [...spielplan, ...finale] });
+    tvToast('Finale erstellt. Weiter geht’s bei der Ergebniseingabe.', 'success');
+    renderTabelle();
+}
+
+async function renderTabelle() {
+    const t = await tvLoad();
+    document.getElementById('ladeHinweis').style.display = 'none';
+
+    const turniername = (t.stammdaten || {}).turniername;
+    if (turniername) document.getElementById('eyebrowTurniername').textContent = turniername;
+
+    const spielplan = t.spielplan || [];
+    const mannschaften = t.mannschaften || [];
+    const ergebnisse = t.ergebnisse || {};
+    const container = document.getElementById('tabelleContainer');
+    const warnBox = document.getElementById('warnBox');
+
+    if (spielplan.length === 0) {
+        if (!istMonitor) {
+            warnBox.style.display = 'block';
+            warnBox.innerHTML = 'Es ist noch kein Turnierplan vorhanden. Bitte zuerst unter '
+                + '<a href="03_turnierplan.html" style="color:var(--accent);">Turnierplan</a> einen Plan erstellen.';
+        }
+        container.innerHTML = '';
+        return;
+    }
+    warnBox.style.display = 'none';
+    container.innerHTML = '';
+
+    const gruppenmodus = mannschaften.some(m => m.gruppe === 1 || m.gruppe === 2);
+
+    if (!gruppenmodus) {
+        container.appendChild(tabelleAlsHtml(tvBerechneTabelle(t)));
+        return;
+    }
+
+    // --- Gruppentabellen ---
+    const gr1Teams = mannschaften.filter(m => m.gruppe === 1);
+    const gr2Teams = mannschaften.filter(m => m.gruppe === 2);
+    const gruppenspiele = spielplan.filter(s => s.phase === 'gruppe' || !s.phase);
+    const tabelleGr1 = tvBerechneTabelle({ ...t, mannschaften: gr1Teams, spielplan: gruppenspiele.filter(s => s.gruppe === 1) });
+    const tabelleGr2 = tvBerechneTabelle({ ...t, mannschaften: gr2Teams, spielplan: gruppenspiele.filter(s => s.gruppe === 2) });
+
+    const titelGruppen = document.createElement('div');
+    titelGruppen.className = 'abschnitt-title';
+    titelGruppen.textContent = 'Gruppenphase';
+    container.appendChild(titelGruppen);
+
+    const grid = document.createElement('div');
+    grid.className = 'gruppen-tabellen';
+    const spalte1 = document.createElement('div');
+    spalte1.innerHTML = '<div style="font-weight:600; margin-bottom:6px;">Gruppe 1</div>';
+    spalte1.appendChild(tabelleAlsHtml(tabelleGr1));
+    const spalte2 = document.createElement('div');
+    spalte2.innerHTML = '<div style="font-weight:600; margin-bottom:6px;">Gruppe 2</div>';
+    spalte2.appendChild(tabelleAlsHtml(tabelleGr2));
+    grid.appendChild(spalte1);
+    grid.appendChild(spalte2);
+    container.appendChild(grid);
+
+    // --- K.o.-Phase: je nach Fortschritt den passenden "weiter"-Button zeigen ---
+    const kreuzspiele = spielplan.filter(s => s.phase === 'kreuzspiel');
+    const halbfinale = spielplan.filter(s => s.phase === 'halbfinale');
+    const finale = spielplan.filter(s => s.phase === 'finale');
+
+    const alleGruppenspieleFertig = gruppenspiele.every(s => ergebnisse[s.id] && ergebnisse[s.id].statusA);
+
+    const koTitel = document.createElement('div');
+    koTitel.className = 'abschnitt-title';
+    koTitel.textContent = 'Kreuzspiele, Halbfinale & Finale';
+    container.appendChild(koTitel);
+
+    if (kreuzspiele.length === 0) {
+        const hinweis = document.createElement('div');
+        hinweis.className = 'bracket-hinweis';
+        if (!alleGruppenspieleFertig) {
+            hinweis.textContent = 'Sobald alle Gruppenspiele ausgewertet sind, können hier die Kreuzspiele (Plätze 1–4 je Gruppe) erstellt werden.';
+            container.appendChild(hinweis);
+        } else {
+            const btn = document.createElement('button');
+            btn.textContent = 'Kreuzspiele erstellen (Plätze 1–4 je Gruppe)';
+            btn.onclick = kreuzspieleErstellen;
+            container.appendChild(btn);
+        }
+    } else if (halbfinale.length === 0) {
+        const alleKreuzspieleFertig = kreuzspiele.every(s => tvSiegerId(s, ergebnisse));
+        if (alleKreuzspieleFertig) {
+            const btn = document.createElement('button');
+            btn.textContent = 'Halbfinale erstellen';
+            btn.onclick = halbfinaleErstellen;
+            container.appendChild(btn);
+        } else {
+            const hinweis = document.createElement('div');
+            hinweis.className = 'bracket-hinweis';
+            hinweis.textContent = 'Kreuzspiele sind angelegt – bitte unter „Ergebniseingabe" auswerten, dann erscheint hier der Button für das Halbfinale.';
+            container.appendChild(hinweis);
+        }
+    } else if (finale.length === 0) {
+        const alleHalbfinaleFertig = halbfinale.every(s => tvSiegerId(s, ergebnisse));
+        if (alleHalbfinaleFertig) {
+            const btn = document.createElement('button');
+            btn.textContent = 'Finale erstellen';
+            btn.onclick = finaleErstellen;
+            container.appendChild(btn);
+        } else {
+            const hinweis = document.createElement('div');
+            hinweis.className = 'bracket-hinweis';
+            hinweis.textContent = 'Halbfinale sind angelegt – bitte unter „Ergebniseingabe" auswerten, dann erscheint hier der Button für das Finale.';
+            container.appendChild(hinweis);
+        }
+    } else if (!tvSiegerId(finale[0], ergebnisse)) {
+        const hinweis = document.createElement('div');
+        hinweis.className = 'bracket-hinweis';
+        hinweis.textContent = 'Finale ist angelegt – bitte unter „Ergebniseingabe" auswerten, um die Gesamttabelle zu sehen.';
+        container.appendChild(hinweis);
+    } else {
+        const titelGesamt = document.createElement('div');
+        titelGesamt.className = 'abschnitt-title';
+        titelGesamt.textContent = 'Gesamttabelle';
+        container.appendChild(titelGesamt);
+
+        const gesamt = tvBerechneGesamttabelle(t);
+        const table = document.createElement('table');
+        table.className = 'data';
+        table.innerHTML = '<tr><th>Platz</th><th>Mannschaft</th></tr>';
+        gesamt.forEach(s => {
+            const tr = document.createElement('tr');
+            tr.innerHTML = `<td>${tvRankBadge(s.platz)}</td><td class="left">${s.name}</td>`;
+            table.appendChild(tr);
+        });
+        container.appendChild(table);
+    }
+}
+
+document.addEventListener('DOMContentLoaded', renderTabelle);
+
+// Aktualisiert sich automatisch alle paar Sekunden - so bekommt der
+// Zuschauermonitor (egal auf welchem Gerät) neue Ergebnisse mit, sobald
+// sie am Eingabe-Gerät gespeichert wurden.
+setInterval(renderTabelle, istMonitor ? 8000 : 15000);
+</script>
+</body>
+</html>

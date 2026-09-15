@@ -1,0 +1,204 @@
+<!DOCTYPE html>
+<html lang="de">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no">
+<title>04 · Wertungskarten – Turnierverwaltung</title>
+<link rel="stylesheet" href="style.css">
+<style>
+  .karte {
+    background: #fff; color: #111; width: 220mm; margin: 0 auto 20px; padding: 8mm;
+    box-sizing: border-box; font-family: Arial, Helvetica, sans-serif; font-size: 11px;
+  }
+  .karte .kopf { margin-bottom: 6px; line-height: 1.5; }
+  .karte .kopf .label { display: inline-block; width: 90px; }
+  .karte table.spielkarte { width: 100%; border-collapse: collapse; table-layout: fixed; }
+  .karte table.spielkarte th, .karte table.spielkarte td {
+    border: 1px solid #444; padding: 3px 4px; text-align: center; height: 20px;
+  }
+  .karte table.spielkarte td.left { text-align: left; }
+  .karte table.spielkarte th { background: #e9e9e9; font-weight: 700; }
+  .karte .col-spiel { width: 26px; }
+  .karte .col-gegner { width: 130px; }
+  .karte .col-bahn { width: 34px; }
+  .karte .col-anst { width: 34px; }
+  .karte .col-kehre { width: 26px; }
+  .karte .col-stock { width: 46px; }
+  .karte .col-spalt { width: 10px; border: none !important; background: transparent !important; }
+  .karte .col-punkte { width: 46px; }
+  .karte tr.gesamt td { font-weight: 700; background: #f2f2f2; border-top: 2px solid #444; }
+
+  #druckBereichEinzeln, #druckBereichGesamt { display: none; }
+  @media print {
+    body.print-einzeln #druckBereichEinzeln,
+    body.print-einzeln #druckBereichEinzeln *,
+    body.print-gesamt #druckBereichGesamt,
+    body.print-gesamt #druckBereichGesamt * { visibility: visible; }
+    #druckBereichEinzeln, #druckBereichGesamt { position: absolute; left: 0; top: 0; width: 100%; }
+    body.print-einzeln #druckBereichEinzeln { display: block; }
+    body.print-gesamt #druckBereichGesamt { display: block; }
+    @page { size: A4 landscape; margin: 8mm; }
+  }
+</style>
+</head>
+<body>
+<div class="wrap">
+  <div class="topbar">
+    <a class="back" href="index.html">&larr; Zurück zum Dashboard</a>
+    <span class="step">Schritt 04 von 06</span>
+  </div>
+  <p class="eyebrow">Turnierverwaltung</p>
+  <h1>Wertungskarten</h1>
+  <p class="lead"><strong>Wertungskarte einzeln</strong> – eine Karte pro Spiel, wird nach dem Spiel beim Wertungsrichter abgegeben. <strong>Wertungskarte gesamt</strong> – eine Karte pro Mannschaft mit allen ihren Spielen. Gegner und Bahn sind bereits aus dem Turnierplan eingetragen, gespielt wird auf 6 Kehren.</p>
+
+  <div id="warnBox" class="warn-box" style="display:none;"></div>
+  <div id="ladeHinweis" class="hint-box">Lade Daten…</div>
+
+  <div class="actions">
+    <button onclick="drucken('einzeln')">🖨️ Wertungskarte einzeln drucken (für Wertungsrichter)</button>
+    <button onclick="drucken('gesamt')">🖨️ Wertungskarte gesamt drucken (pro Mannschaft)</button>
+    <a class="btn btn-secondary" href="05_ergebnis.html">Weiter zur Ergebniseingabe &rarr;</a>
+  </div>
+
+  <div id="druckBereichEinzeln"></div>
+  <div id="druckBereichGesamt"></div>
+</div>
+
+<script src="turnier.js"></script>
+<script>
+const ANZAHL_KEHREN = 6; // bei einem Turnier wird immer auf 6 Kehren gespielt
+
+function drucken(art) {
+    document.body.classList.remove('print-einzeln', 'print-gesamt');
+    document.body.classList.add(art === 'einzeln' ? 'print-einzeln' : 'print-gesamt');
+    window.print();
+}
+
+function leereZellen(anzahl) {
+    return '<td></td>'.repeat(anzahl);
+}
+
+function kopfHtml() {
+    const kehreHeader = Array.from({ length: ANZAHL_KEHREN }, (_, i) => `<th class="col-kehre">${i + 1}</th>`).join('');
+    return `
+        <tr>
+          <th class="col-spiel" rowspan="2">Spiel</th>
+          <th class="col-gegner" rowspan="2">Gegner</th>
+          <th class="col-bahn" rowspan="2">Bahn</th>
+          <th class="col-anst" rowspan="2">Anst</th>
+          <th colspan="${ANZAHL_KEHREN}">Kehre</th>
+          <th class="col-stock" rowspan="2">Stock<br>Punkte</th>
+          <th class="col-spalt" rowspan="2"></th>
+          <th class="col-bahn" rowspan="2">Bahn</th>
+          <th colspan="${ANZAHL_KEHREN}">Kehre</th>
+          <th class="col-stock" rowspan="2">Stock<br>Punkte</th>
+          <th class="col-punkte" rowspan="2">Spiel-<br>punkte</th>
+        </tr>
+        <tr>${kehreHeader}${kehreHeader}</tr>`;
+}
+
+function zeileHtml(spielNr, gegnerName, bahn) {
+    return `
+        <tr>
+          <td>${spielNr}</td>
+          <td class="left">${gegnerName}</td>
+          <td>${bahn}</td>
+          <td></td>
+          ${leereZellen(ANZAHL_KEHREN)}
+          <td></td>
+          <td class="col-spalt"></td>
+          <td>${bahn}</td>
+          ${leereZellen(ANZAHL_KEHREN)}
+          <td></td>
+          <td></td>
+        </tr>`;
+}
+
+function kartenGeruest(kopfzeilen, tabelleninhalt) {
+    return `
+    <div class="karte">
+      <div class="kopf">
+        <div><span class="label">Veranstaltung</span>${kopfzeilen.turniername || ''}</div>
+        <div><span class="label">Datum</span>${kopfzeilen.datum || ''}</div>
+        <div><span class="label">Mannschaft</span><strong>${kopfzeilen.mannschaft || ''}</strong></div>
+      </div>
+      <table class="spielkarte">
+        ${kopfHtml()}
+        ${tabelleninhalt}
+      </table>
+    </div>`;
+}
+
+// "Wertungskarte gesamt" - eine Karte pro Mannschaft mit allen ihren Spielen
+function karteGesamtFuerTeam(team, spieleDesTeams, teams, stammdaten) {
+    const zeilen = spieleDesTeams.map((spiel, idx) => {
+        const gegnerId = spiel.teamA === team.id ? spiel.teamB : spiel.teamA;
+        return zeileHtml(idx + 1, tvTeamName(teams, gegnerId), spiel.bahn);
+    }).join('');
+
+    const gesamtZeile = `
+        <tr class="gesamt">
+          <td colspan="3" class="left">Gesamt</td>
+          <td></td>
+          ${leereZellen(ANZAHL_KEHREN)}
+          <td></td>
+          <td class="col-spalt"></td>
+          <td></td>
+          ${leereZellen(ANZAHL_KEHREN)}
+          <td></td>
+          <td></td>
+        </tr>`;
+
+    return kartenGeruest(
+        { turniername: stammdaten.turniername, datum: stammdaten.datum, mannschaft: team.name },
+        zeilen + gesamtZeile
+    );
+}
+
+// "Wertungskarte einzeln" - eine Karte pro Spiel, für den Wertungsrichter.
+// Gleiche Tabellenform wie "gesamt", aber mit genau einer Zeile (dieses Spiel).
+function karteEinzelnFuerSpiel(spiel, teams, stammdaten) {
+    const teamA = teams.find(t => t.id === spiel.teamA);
+    const gegnerName = tvTeamName(teams, spiel.teamB);
+    const zeile = zeileHtml(1, gegnerName, spiel.bahn);
+    return kartenGeruest(
+        { turniername: stammdaten.turniername, datum: stammdaten.datum, mannschaft: teamA ? teamA.name : '' },
+        zeile
+    );
+}
+
+document.addEventListener('DOMContentLoaded', async () => {
+    const t = await tvLoad();
+    document.getElementById('ladeHinweis').style.display = 'none';
+    const spielplan = t.spielplan || [];
+    const mannschaften = t.mannschaften || [];
+    const stammdaten = t.stammdaten || {};
+
+    if (spielplan.length === 0) {
+        const box = document.getElementById('warnBox');
+        box.style.display = 'block';
+        box.innerHTML = 'Es ist noch kein Turnierplan vorhanden. Bitte zuerst unter '
+            + '<a href="03_turnierplan.html" style="color:var(--accent);">Turnierplan</a> einen Plan erstellen.';
+        return;
+    }
+
+    const teams = mannschaften.map(m => ({ id: m.id, name: m.name }));
+
+    const bereichGesamt = document.getElementById('druckBereichGesamt');
+    bereichGesamt.innerHTML = teams.map(team => {
+        const spieleDesTeams = spielplan
+            .filter(s => s.teamA === team.id || s.teamB === team.id)
+            .sort((a, b) => a.runde - b.runde);
+        return karteGesamtFuerTeam(team, spieleDesTeams, teams, stammdaten);
+    }).join('');
+
+    const bereichEinzeln = document.getElementById('druckBereichEinzeln');
+    bereichEinzeln.innerHTML = spielplan
+        .slice()
+        .sort((a, b) => a.runde - b.runde || a.bahn - b.bahn)
+        .map(s => karteEinzelnFuerSpiel(s, teams, stammdaten))
+        .join('');
+});
+</script>
+</body>
+</html>

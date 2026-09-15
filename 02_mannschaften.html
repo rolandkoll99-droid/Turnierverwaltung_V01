@@ -1,0 +1,190 @@
+<!DOCTYPE html>
+<html lang="de">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no">
+<title>02 · Mannschaften – Turnierverwaltung</title>
+<link rel="stylesheet" href="style.css">
+<style>#fileImport { display: none; }</style>
+</head>
+<body>
+<div class="wrap">
+  <div class="topbar">
+    <a class="back" href="index.html">&larr; Zurück zum Dashboard</a>
+    <span class="step">Schritt 02 von 06</span>
+  </div>
+  <p class="eyebrow">Turnierverwaltung</p>
+  <h1>Mannschaften</h1>
+  <p class="lead">Mannschaftsnamen und Spieler eingeben – oder per Excel importieren.</p>
+
+  <div id="warnMissingStammdaten" class="warn-box" style="display:none;"></div>
+  <div id="ladeHinweis" class="hint-box">Lade Daten…</div>
+
+  <div class="actions">
+    <button class="btn-secondary" onclick="document.getElementById('fileImport').click()">📥 Excel importieren</button>
+    <input type="file" id="fileImport" accept=".xlsx,.xls" onchange="excelImportieren(event)">
+    <button class="btn-secondary" onclick="excelVorlageExportieren()">📄 Leere Vorlage exportieren</button>
+    <button class="btn-secondary" onclick="excelExportieren()">📤 Mannschaften exportieren</button>
+  </div>
+
+  <div id="teamsContainer"></div>
+
+  <div class="actions">
+    <button id="btnSpeichern" onclick="speichern()">Speichern</button>
+    <button id="btnWeiter" class="btn-secondary" onclick="speichernUndWeiter('03_turnierplan.html')">Weiter zum Turnierplan &rarr;</button>
+  </div>
+</div>
+
+<div class="toast" id="toast"></div>
+
+<script src="turnier.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
+<script>
+const STANDARD_SPIELER_PRO_TEAM = 4;
+let mannschaften = [];
+
+function neueMannschaft(name = '') {
+    const spieler = [];
+    for (let i = 0; i < STANDARD_SPIELER_PRO_TEAM; i++) spieler.push('');
+    return { name, spieler };
+}
+
+function renderTeams() {
+    const container = document.getElementById('teamsContainer');
+    container.innerHTML = '';
+    mannschaften.forEach((team, ti) => {
+        const card = document.createElement('div');
+        card.className = 'team-card';
+
+        const head = document.createElement('div');
+        head.className = 'team-head';
+        head.innerHTML = `<span class="team-num">${String(ti + 1).padStart(2, '0')}</span>`;
+        const nameInput = document.createElement('input');
+        nameInput.type = 'text';
+        nameInput.placeholder = `Mannschaftsname ${ti + 1}`;
+        nameInput.value = team.name;
+        nameInput.addEventListener('input', (e) => { mannschaften[ti].name = e.target.value; });
+        head.appendChild(nameInput);
+        card.appendChild(head);
+
+        const list = document.createElement('div');
+        list.className = 'player-list';
+        team.spieler.forEach((sp, si) => {
+            const row = document.createElement('div');
+            row.className = 'player-row';
+            const input = document.createElement('input');
+            input.type = 'text';
+            input.placeholder = `Spieler ${si + 1}`;
+            input.value = sp;
+            input.addEventListener('input', (e) => { mannschaften[ti].spieler[si] = e.target.value; });
+            row.appendChild(input);
+            if (team.spieler.length > 1) {
+                const del = document.createElement('button');
+                del.className = 'icon-btn';
+                del.textContent = '✕';
+                del.onclick = () => { mannschaften[ti].spieler.splice(si, 1); renderTeams(); };
+                row.appendChild(del);
+            }
+            list.appendChild(row);
+        });
+        card.appendChild(list);
+
+        const addBtn = document.createElement('button');
+        addBtn.className = 'icon-btn';
+        addBtn.style.marginTop = '10px';
+        addBtn.textContent = '+ Spieler hinzufügen';
+        addBtn.onclick = () => { mannschaften[ti].spieler.push(''); renderTeams(); };
+        card.appendChild(addBtn);
+
+        container.appendChild(card);
+    });
+}
+
+async function speichern() {
+    const btn = document.getElementById('btnSpeichern');
+    btn.disabled = true; btn.textContent = 'Speichere…';
+    const ergebnis = await tvSave({ mannschaften });
+    btn.disabled = false; btn.textContent = 'Speichern';
+    if (ergebnis !== null) tvToast('Mannschaften gespeichert.', 'success');
+    return ergebnis !== null;
+}
+
+async function speichernUndWeiter(ziel) {
+    const btn = document.getElementById('btnWeiter');
+    btn.disabled = true; btn.textContent = 'Speichere…';
+    await speichern();
+    window.location.href = ziel;
+}
+
+function excelVorlageExportieren() {
+    const rows = [['Mannschaft', 'Spieler 1', 'Spieler 2', 'Spieler 3', 'Spieler 4']];
+    for (let i = 0; i < Math.max(mannschaften.length, 4); i++) rows.push(['', '', '', '', '']);
+    const ws = XLSX.utils.aoa_to_sheet(rows);
+    const wb = XLSX.utils.book_new();
+    XLSX.utils.book_append_sheet(wb, ws, 'Mannschaften');
+    XLSX.writeFile(wb, 'Mannschaften_Vorlage.xlsx');
+}
+
+function excelExportieren() {
+    const maxSpieler = mannschaften.reduce((m, t) => Math.max(m, t.spieler.length), STANDARD_SPIELER_PRO_TEAM);
+    const header = ['Mannschaft'];
+    for (let i = 1; i <= maxSpieler; i++) header.push(`Spieler ${i}`);
+    const rows = [header];
+    mannschaften.forEach(t => {
+        const row = [t.name];
+        for (let i = 0; i < maxSpieler; i++) row.push(t.spieler[i] || '');
+        rows.push(row);
+    });
+    const ws = XLSX.utils.aoa_to_sheet(rows);
+    const wb = XLSX.utils.book_new();
+    XLSX.utils.book_append_sheet(wb, ws, 'Mannschaften');
+    XLSX.writeFile(wb, 'Mannschaften_Export.xlsx');
+}
+
+function excelImportieren(event) {
+    const file = event.target.files[0];
+    if (!file) return;
+    const reader = new FileReader();
+    reader.onload = (e) => {
+        try {
+            const data = new Uint8Array(e.target.result);
+            const wb = XLSX.read(data, { type: 'array' });
+            const ws = wb.Sheets[wb.SheetNames[0]];
+            const rows = XLSX.utils.sheet_to_json(ws, { header: 1 });
+            const datenzeilen = rows.slice(1).filter(r => r && r[0]);
+            mannschaften = datenzeilen.map(r => ({
+                name: String(r[0] || '').trim(),
+                spieler: r.slice(1).map(v => String(v || '').trim()).filter((v, idx) => idx < STANDARD_SPIELER_PRO_TEAM || v !== '')
+            }));
+            mannschaften.forEach(t => { if (t.spieler.length === 0) t.spieler.push(''); });
+            renderTeams();
+            tvToast(`${mannschaften.length} Mannschaften importiert. Nicht vergessen: unten auf "Speichern" klicken.`, 'success');
+        } catch (err) {
+            tvToast('Import fehlgeschlagen – Datei/Format prüfen.', 'error');
+        }
+    };
+    reader.readAsArrayBuffer(file);
+    event.target.value = '';
+}
+
+document.addEventListener('DOMContentLoaded', async () => {
+    const t = await tvLoad();
+    document.getElementById('ladeHinweis').style.display = 'none';
+    const anzahl = (t.stammdaten || {}).anzahlMannschaften;
+    if (!anzahl) {
+        const box = document.getElementById('warnMissingStammdaten');
+        box.style.display = 'block';
+        box.innerHTML = 'Es sind noch keine Turnierdaten hinterlegt. Bitte zuerst unter '
+            + '<a href="01_turniername.html" style="color:var(--accent);">Turniername</a> die Anzahl der Mannschaften festlegen.';
+    }
+    if (Array.isArray(t.mannschaften) && t.mannschaften.length > 0) {
+        mannschaften = t.mannschaften;
+    } else {
+        const n = anzahl || 4;
+        for (let i = 0; i < n; i++) mannschaften.push(neueMannschaft());
+    }
+    renderTeams();
+});
+</script>
+</body>
+</html>

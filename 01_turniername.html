@@ -1,0 +1,148 @@
+<!DOCTYPE html>
+<html lang="de">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no">
+<title>01 · Turniername – Turnierverwaltung</title>
+<link rel="stylesheet" href="style.css">
+</head>
+<body>
+<div class="wrap">
+  <div class="topbar">
+    <a class="back" href="index.html">&larr; Zurück zum Dashboard</a>
+    <span class="step">Schritt 01 von 06</span>
+  </div>
+  <p class="eyebrow">Turnierverwaltung</p>
+  <h1>Turniername</h1>
+  <p class="lead">Grunddaten des Turniers festlegen. Diese Angaben werden für Spielplan, Wertungskarten und Tabelle verwendet.</p>
+
+  <div class="card">
+    <label for="turniername">Turniername</label>
+    <input type="text" id="turniername" placeholder="z. B. ESV Grein Stockturnier 2026">
+
+    <label for="ort">Örtlichkeit</label>
+    <input type="text" id="ort" placeholder="z. B. Stockbahn ESV Grein">
+
+    <div class="row2">
+      <div>
+        <label for="datum">Datum</label>
+        <input type="date" id="datum">
+      </div>
+      <div>
+        <label for="beginn">Beginn</label>
+        <input type="time" id="beginn">
+      </div>
+    </div>
+
+    <div class="row2">
+      <div>
+        <label for="anzahlMannschaften">Anzahl der Mannschaften</label>
+        <input type="number" id="anzahlMannschaften" min="2" max="64" placeholder="z. B. 9">
+      </div>
+      <div>
+        <label for="anzahlBahnen">Anzahl der Bahnen</label>
+        <input type="number" id="anzahlBahnen" min="1" max="20" placeholder="z. B. 4">
+      </div>
+    </div>
+
+    <div class="hint-box" id="hintBox">
+      Trag Mannschaften und Bahnen ein, um eine Vorschau des Rundenplans zu sehen.
+    </div>
+
+    <div class="actions">
+      <button id="btnSpeichern" onclick="speichern()">Speichern</button>
+      <button id="btnWeiter" class="btn-secondary" onclick="speichernUndWeiter('02_mannschaften.html')">Weiter zu Mannschaften &rarr;</button>
+    </div>
+  </div>
+</div>
+
+<div class="toast" id="toast"></div>
+
+<script src="turnier.js"></script>
+<script>
+function aktualisiereHint() {
+    const n = parseInt(document.getElementById('anzahlMannschaften').value, 10);
+    const bahnen = parseInt(document.getElementById('anzahlBahnen').value, 10);
+    const box = document.getElementById('hintBox');
+    const info = tvBerechneVorschau(n, bahnen);
+    if (!info) {
+        box.innerHTML = 'Trag Mannschaften und Bahnen ein, um eine Vorschau des Rundenplans zu sehen.';
+        return;
+    }
+    let text = `Bei <strong>${n} Mannschaften</strong> ergeben sich <strong>${info.runden} Runden</strong> mit je `
+        + `<strong>${info.spielProRunde} Spiel${info.spielProRunde === 1 ? '' : 'en'}</strong>.`;
+    if (info.hatFreilos) {
+        text += ` Da die Anzahl ungerade ist, hat pro Runde eine Mannschaft <strong>spielfrei</strong> (rotierend).`;
+    }
+    if (bahnen) {
+        if (info.durchgaengeProRunde > 1) {
+            text += ` Mit <strong>${bahnen} Bahn${bahnen === 1 ? '' : 'en'}</strong> braucht jede Runde `
+                + `<strong>${info.durchgaengeProRunde} Durchgänge</strong> (nicht alle Spiele einer Runde passen gleichzeitig auf die Bahnen).`;
+        } else {
+            text += ` Mit <strong>${bahnen} Bahn${bahnen === 1 ? '' : 'en'}</strong> passt jede Runde in einem Durchgang auf die Bahnen.`;
+        }
+    }
+    box.innerHTML = text;
+}
+
+function sammleFormular() {
+    return {
+        turniername: document.getElementById('turniername').value.trim(),
+        ort: document.getElementById('ort').value.trim(),
+        datum: document.getElementById('datum').value,
+        beginn: document.getElementById('beginn').value,
+        anzahlMannschaften: parseInt(document.getElementById('anzahlMannschaften').value, 10) || null,
+        anzahlBahnen: parseInt(document.getElementById('anzahlBahnen').value, 10) || null
+    };
+}
+
+// Speichert immer das, was ausgefüllt ist - kein Alles-oder-nichts.
+// Gibt true zurück, wenn alle Pflichtfelder vollständig sind.
+async function speichern() {
+    const btn = document.getElementById('btnSpeichern');
+    btn.disabled = true; btn.textContent = 'Speichere…';
+
+    const daten = sammleFormular();
+    const ergebnis = await tvSave({ stammdaten: Object.assign({ aktualisiert: new Date().toISOString() }, daten) });
+
+    btn.disabled = false; btn.textContent = 'Speichern';
+    if (ergebnis === null) return false; // Fehlermeldung wurde bereits angezeigt
+
+    const fehlend = [];
+    if (!daten.turniername) fehlend.push('Turniername');
+    if (!daten.ort) fehlend.push('Örtlichkeit');
+    if (!daten.datum) fehlend.push('Datum');
+    if (!daten.anzahlMannschaften || daten.anzahlMannschaften < 2) fehlend.push('Anzahl der Mannschaften (min. 2)');
+    if (!daten.anzahlBahnen || daten.anzahlBahnen < 1) fehlend.push('Anzahl der Bahnen');
+
+    if (fehlend.length > 0) {
+        tvToast('Gespeichert. Noch offen: ' + fehlend.join(', '), 'info');
+        return false;
+    }
+    tvToast('Turnierdaten vollständig gespeichert.', 'success');
+    return true;
+}
+
+async function speichernUndWeiter(ziel) {
+    const btn = document.getElementById('btnWeiter');
+    btn.disabled = true; btn.textContent = 'Speichere…';
+    await speichern();
+    window.location.href = ziel;
+}
+
+document.addEventListener('DOMContentLoaded', async () => {
+    const t = await tvLoad();
+    const s = t.stammdaten || {};
+    if (s.turniername) document.getElementById('turniername').value = s.turniername;
+    if (s.ort) document.getElementById('ort').value = s.ort;
+    if (s.datum) document.getElementById('datum').value = s.datum;
+    if (s.beginn) document.getElementById('beginn').value = s.beginn;
+    if (s.anzahlMannschaften) document.getElementById('anzahlMannschaften').value = s.anzahlMannschaften;
+    if (s.anzahlBahnen) document.getElementById('anzahlBahnen').value = s.anzahlBahnen;
+    aktualisiereHint();
+    document.getElementById('anzahlMannschaften').addEventListener('input', aktualisiereHint);
+    document.getElementById('anzahlBahnen').addEventListener('input', aktualisiereHint);
+});
+</script>
+</body>
+</html>
