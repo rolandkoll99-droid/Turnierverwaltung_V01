@@ -75,6 +75,7 @@
     <div class="turnier-aktionen">
       <button onclick="neuesTurnierStarten()">🆕 Neues Turnier starten</button>
       <button onclick="archivUmschalten()">🗂 Frühere Turniere<span id="archivPfeil"> ▾</span></button>
+      <button onclick="demoZuruecksetzen()">🔄 Demo zurücksetzen</button>
     </div>
     <div class="archiv-liste" id="archivListe"></div>
     <hr class="trennlinie">
@@ -97,6 +98,7 @@
   </div>
 </div>
 
+<script src="demodaten.js"></script>
 <script src="turnier.js"></script>
 <script>
 function oeffneModul(btn) {
@@ -192,7 +194,33 @@ async function archivLaden() {
     });
 }
 
-ladeTurniernameAnzeige();
+async function demoZuruecksetzen() {
+    const bestaetigt = confirm(
+        'Demo-Turnier neu laden?\n\nDas aktuelle Turnier wird durch das vorgefertigte Beispielturnier ' +
+        '(ESV Grein Stockturnier 2026, 9 Mannschaften, komplett ausgewertet) ersetzt. ' +
+        'Andere Turniere im Archiv bleiben unberührt.'
+    );
+    if (!bestaetigt) return;
+    await tvSave(TV_DEMO_DATEN);
+    await ladeTurniernameAnzeige();
+    const rahmen = document.getElementById('modulRahmen');
+    if (rahmen.src) rahmen.src = rahmen.src;
+    tvToast('Demo-Turnier geladen.', 'success');
+}
+
+// Beim allerersten Start (noch nie benutzt) automatisch das
+// Beispielturnier laden, damit eine Vorführung sofort ein
+// vollständiges, ansprechendes Turnier zeigt statt leerer Formulare.
+// Nutzt einen eigenen Merker (nicht die Turnierliste selbst), da schon
+// das normale Laden der Kopfzeile automatisch ein leeres Turnier anlegt.
+async function demoBeimErstenStartLaden() {
+    const schonInitialisiert = localStorage.getItem('tv_praesentation_initialisiert');
+    if (schonInitialisiert) return;
+    localStorage.setItem('tv_praesentation_initialisiert', '1');
+    await tvSave(TV_DEMO_DATEN);
+}
+
+demoBeimErstenStartLaden().then(ladeTurniernameAnzeige);
 </script>
 </body>
 </html>
